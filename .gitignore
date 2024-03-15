@@ -1,3 +1,4 @@
 /target
 _data
-*/test*
+/src/bin
+/src/test.rs
