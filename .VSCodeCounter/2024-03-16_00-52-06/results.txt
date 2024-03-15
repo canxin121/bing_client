@@ -1,0 +1,48 @@
+Date : 2024-03-16 00:52:06
+Directory : d:\Git\bing_client\src
+Total : 18 files,  1679 codes, 45 comments, 136 blanks, all 1860 lines
+
+Languages
++----------+------------+------------+------------+------------+------------+
+| language | files      | code       | comment    | blank      | total      |
++----------+------------+------------+------------+------------+------------+
+| Rust     |         18 |      1,679 |         45 |        136 |      1,860 |
++----------+------------+------------+------------+------------+------------+
+
+Directories
++--------------------------------------------------+------------+------------+------------+------------+------------+
+| path                                             | files      | code       | comment    | blank      | total      |
++--------------------------------------------------+------------+------------+------------+------------+------------+
+| .                                                |         18 |      1,679 |         45 |        136 |      1,860 |
+| . (Files)                                        |          1 |         12 |          0 |          2 |         14 |
+| client                                           |          1 |        575 |          3 |         36 |        614 |
+| const_vars                                       |          1 |         37 |          0 |         10 |         47 |
+| local_macro                                      |          1 |         12 |          0 |          1 |         13 |
+| types                                            |          8 |        757 |         39 |         58 |        854 |
+| utils                                            |          6 |        286 |          3 |         29 |        318 |
++--------------------------------------------------+------------+------------+------------+------------+------------+
+
+Files
++--------------------------------------------------+----------+------------+------------+------------+------------+
+| filename                                         | language | code       | comment    | blank      | total      |
++--------------------------------------------------+----------+------------+------------+------------+------------+
+| d:\Git\bing_client\src\client\mod.rs             | Rust     |        575 |          3 |         36 |        614 |
+| d:\Git\bing_client\src\const_vars\mod.rs         | Rust     |         37 |          0 |         10 |         47 |
+| d:\Git\bing_client\src\lib.rs                    | Rust     |         12 |          0 |          2 |         14 |
+| d:\Git\bing_client\src\local_macro\mod.rs        | Rust     |         12 |          0 |          1 |         13 |
+| d:\Git\bing_client\src\types\bot_easy_resp.rs    | Rust     |        103 |          0 |          7 |        110 |
+| d:\Git\bing_client\src\types\chat_type.rs        | Rust     |         42 |          0 |          5 |         47 |
+| d:\Git\bing_client\src\types\client_info_type.rs | Rust     |         13 |          1 |          3 |         17 |
+| d:\Git\bing_client\src\types\create_chat_type.rs | Rust     |         10 |          0 |          2 |         12 |
+| d:\Git\bing_client\src\types\delete_chat_type.rs | Rust     |         40 |          0 |          5 |         45 |
+| d:\Git\bing_client\src\types\mod.rs              | Rust     |         13 |          0 |          3 |         16 |
+| d:\Git\bing_client\src\types\plugin_type.rs      | Rust     |         50 |          0 |          3 |         53 |
+| d:\Git\bing_client\src\types\user_input_type.rs  | Rust     |        486 |         38 |         30 |        554 |
+| d:\Git\bing_client\src\utils\cookie_pre.rs       | Rust     |         20 |          3 |          5 |         28 |
+| d:\Git\bing_client\src\utils\draw_image.rs       | Rust     |         81 |          0 |         10 |         91 |
+| d:\Git\bing_client\src\utils\image_base64.rs     | Rust     |         26 |          0 |          3 |         29 |
+| d:\Git\bing_client\src\utils\mod.rs              | Rust     |          5 |          0 |          0 |          5 |
+| d:\Git\bing_client\src\utils\msg_proces.rs       | Rust     |          3 |          0 |          1 |          4 |
+| d:\Git\bing_client\src\utils\process_bot_resp.rs | Rust     |        151 |          0 |         10 |        161 |
+| Total                                            |          |      1,679 |         45 |        136 |      1,860 |
++--------------------------------------------------+----------+------------+------------+------------+------------+
