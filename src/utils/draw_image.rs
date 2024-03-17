@@ -8,7 +8,7 @@ use crate::const_vars::{gen_draw_image_url, gen_get_images_url};
 pub async fn draw_image(
     prompt: &str,
     reqwest_header: HeaderMap,
-) -> Result<Vec<crate::types::bot_easy_resp::Image>, anyhow::Error> {
+) -> Result<Vec<crate::types::bot_easy_resp_type::Image>, anyhow::Error> {
     let client = reqwest::Client::builder()
         .redirect(Policy::none())
         .build()?;
@@ -59,32 +59,50 @@ pub async fn draw_image(
         sleep(Duration::from_micros(500)).await;
     };
 
-    let normal_image_links: Vec<String> = content
+    if let Some(links) = extract_image_links(content) {
+        let imgs: Vec<crate::types::bot_easy_resp_type::Image> = links
+            .iter()
+            .enumerate()
+            .map(|(index, link)| crate::types::bot_easy_resp_type::Image {
+                name: format!("bing_image_{}.jpg", index+1),
+                url: link.to_string(),
+            })
+            .collect();
+        Ok(imgs)
+    } else {
+        return Err(anyhow::anyhow!("Drawing Failed: No images are found."));
+    }
+}
+
+pub fn extract_image_links(html: String) -> Option<Vec<String>> {
+    let links = html
         .split("src=\"")
         .filter_map(|s| {
             if let Some(end) = s.find("\"") {
                 let link = s[..end].to_string();
                 if let Some(link) = link.split("?w=").next() {
-                    if !link.contains("r.bing.com") && link.starts_with("https://") {
+                    if !link.contains("r.bing.com")
+                        && link.starts_with("https://")
+                        && !link.starts_with("https://www.clarity.")
+                    {
                         return Some(link.to_string());
                     }
                 }
             }
             None
         })
-        .collect();
-
-    if normal_image_links.is_empty() {
-        return Err(anyhow::anyhow!("Drawing Failed: No images are found."));
+        .collect::<Vec<String>>();
+    if !links.is_empty() {
+        Some(links)
     } else {
-        let imgs: Vec<crate::types::bot_easy_resp::Image> = normal_image_links
-            .iter()
-            .enumerate()
-            .map(|(index, link)| crate::types::bot_easy_resp::Image {
-                name: format!("bing_image_{}.jpg", index),
-                url: link.to_string(),
-            })
-            .collect();
-        Ok(imgs)
+        None
+    }
+}
+
+#[tokio::test]
+async fn test() {
+    let content = reqwest::Client::builder().redirect(Policy::none()).build().unwrap().get("https://www.bing.com/images/create/e78cabe592aa/1-65f5ce54cbd448c4ae6c7a77ca6fc647?showselective=1&partner=sydney&FORM=SYDBIC&q=猫咪&iframeid=8492f7d0-e779-4faa-b1c8-1c24b739d98d").send().await.unwrap().text().await.unwrap();
+    if let Some(links) = extract_image_links(content) {
+        println!("{:?}", links)
     }
 }

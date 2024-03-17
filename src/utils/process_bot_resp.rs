@@ -1,6 +1,6 @@
 use serde_json::Value;
 
-use crate::types::bot_easy_resp::{BotResp, Image, Limit, SourceAttribution};
+use crate::types::bot_easy_resp_type::{BotResp, Image, Limit, SourceAttribution};
 
 use super::draw_image::draw_image;
 
@@ -30,17 +30,21 @@ pub(crate) fn json2bot_resp_type1(
     bot_resps
 }
 
-fn process_suggested_responses(suggested_responses: Vec<Value>, bot_resps: &mut Vec<BotResp>) {
+pub fn process_suggested_responses(suggested_responses: Vec<Value>) -> Option<Vec<String>> {
     let mut rst = Vec::new();
     for suggest in suggested_responses.iter() {
         if let Some(Value::String(content)) = suggest.get("text") {
             rst.push(content.to_owned());
         }
     }
-    bot_resps.push(BotResp::SuggestReply(rst))
+    if !rst.is_empty() {
+        Some(rst)
+    } else {
+        None
+    }
 }
 
-fn process_source_msg(sources: Vec<Value>, bot_resps: &mut Vec<BotResp>) -> Result<(), String> {
+pub(crate) fn process_source_msg(sources: Vec<Value>) -> Option<Vec<SourceAttribution>> {
     let mut source_resps = Vec::new();
     for source in sources {
         let image = source
@@ -68,13 +72,14 @@ fn process_source_msg(sources: Vec<Value>, bot_resps: &mut Vec<BotResp>) -> Resu
                     source_resps.push(source_resp);
                 }
             }
-            Err(e) => return Err(format!("Error parsing source attribution: {}", e)),
+            Err(_) => return None,
         }
     }
     if !source_resps.is_empty() {
-        bot_resps.push(BotResp::SourceAttribution(source_resps));
+        Some(source_resps)
+    } else {
+        None
     }
-    Ok(())
 }
 
 fn process_text_msg(
@@ -129,15 +134,18 @@ pub(crate) fn json2bot_resp_type2(json: &Value) -> Result<Vec<BotResp>, String> 
                                 if let Some(sources) =
                                     message.get("sourceAttributions").and_then(|v| v.as_array())
                                 {
-                                    let _ = process_source_msg(sources.to_owned(), &mut bot_resps);
+                                    if let Some(sources) = process_source_msg(sources.to_owned()) {
+                                        bot_resps.push(BotResp::SourceAttribution(sources))
+                                    }
                                 }
                                 if let Some(suggested_responses) =
                                     message.get("suggestedResponses").and_then(|v| v.as_array())
                                 {
-                                    process_suggested_responses(
-                                        suggested_responses.to_owned(),
-                                        &mut bot_resps,
-                                    );
+                                    if let Some(s) =
+                                        process_suggested_responses(suggested_responses.to_owned())
+                                    {
+                                        bot_resps.push(BotResp::SuggestReply(s))
+                                    }
                                 }
                             }
                             "user" => {}

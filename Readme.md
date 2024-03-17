@@ -47,12 +47,10 @@ let chat = client.create_chat().await.unwrap();
 client.delete_chat(&mut chat).await.unwrap();
 ```
 
-## Get chat messages(Under construction)
-
-### Currently it only return json value
+## Get chat messages
 
 ```rust
-let messages: serde_json::Value = client.get_chat_messages(&mut last_chat).await.unwrap();
+let messages = client.get_chat_messages(&mut last_chat).await.unwrap();
 ```
 
 ## Ask question in a chat, and get only string(markdown) reply

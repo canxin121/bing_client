@@ -18,19 +18,14 @@ use crate::{
         GET_CHAT_LIST_URL,
     },
     types::{
-        bot_easy_resp::BotResp,
-        chat_type::{Chat, ChatListResp},
-        client_info_type::GetClientInfoResponse,
-        create_chat_type::CreateChatChatResp,
-        delete_chat_type::{DeleteChatPayload, DeleteChatResp},
-        user_input_type::UserInput,
+        bot_easy_resp_type::BotResp, chat_msg_type::EasyMsg, chat_type::{Chat, ChatListResp}, client_info_type::GetClientInfoResponse, create_chat_type::CreateChatChatResp, delete_chat_type::{DeleteChatPayload, DeleteChatResp}, user_input_type::UserInput
     },
     utils::{
         cookie_pre,
         draw_image::draw_image,
         image_base64::Image,
         msg_proces::add_suffix,
-        process_bot_resp::{json2bot_resp_type1, json2bot_resp_type2},
+        process_bot_resp::{json2bot_resp_type1, json2bot_resp_type2}, process_chat_msgs::process_chat_msgs,
     },
 };
 
@@ -309,7 +304,7 @@ impl BingClient {
         }
     }
 
-    pub async fn get_chat_messages(&self, chat: &mut Chat) -> Result<Value, anyhow::Error> {
+    pub async fn get_chat_messages(&self, chat: &mut Chat) -> Result<Vec<EasyMsg>, anyhow::Error> {
         if let None = chat.x_sydney_conversationsignature {
             self.update_chat_signature(chat).await?;
         }
@@ -338,13 +333,13 @@ impl BingClient {
             .await?
             .json()
             .await?;
-        Ok(resp)
+        process_chat_msgs(&resp, &self).await
     }
 
     pub async fn draw_image(
         &self,
         prompt: &str,
-    ) -> Result<Vec<crate::types::bot_easy_resp::Image>, anyhow::Error> {
+    ) -> Result<Vec<crate::types::bot_easy_resp_type::Image>, anyhow::Error> {
         draw_image(prompt, self.gen_header()?).await
     }
 
@@ -362,20 +357,20 @@ impl BingClient {
         let chat_gen = Gen::new(|co| async move {
             while let GeneratorState::Yielded(data) = stream.async_resume().await {
                 match data {
-                    crate::types::bot_easy_resp::BotResp::Text(text) => {
+                    crate::types::bot_easy_resp_type::BotResp::Text(text) => {
                         plain_text = text.to_owned();
                         co.yield_(text).await;
                     }
-                    crate::types::bot_easy_resp::BotResp::SuggestReply(_) => {
+                    crate::types::bot_easy_resp_type::BotResp::SuggestReply(_) => {
                         suggest_replt_text += &data.to_string();
                     }
-                    crate::types::bot_easy_resp::BotResp::Image(_) => {
+                    crate::types::bot_easy_resp_type::BotResp::Image(_) => {
                         image_text += &data.to_string();
                     }
-                    crate::types::bot_easy_resp::BotResp::SourceAttribution(_) => {
+                    crate::types::bot_easy_resp_type::BotResp::SourceAttribution(_) => {
                         source_text += &data.to_string();
                     }
-                    crate::types::bot_easy_resp::BotResp::Limit(_) => {
+                    crate::types::bot_easy_resp_type::BotResp::Limit(_) => {
                         limit_text += &data.to_string();
                     }
                     _ => {}
