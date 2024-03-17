@@ -1,7 +1,6 @@
 pub mod client;
 pub mod const_vars;
 pub mod local_macro;
-pub mod test;
 pub mod types;
 pub mod utils;
 
