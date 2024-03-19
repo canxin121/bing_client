@@ -3,6 +3,7 @@ pub mod const_vars;
 pub mod local_macro;
 pub mod types;
 pub mod utils;
+pub mod tests;
 
 pub use client::BingClient;
 pub use types::{

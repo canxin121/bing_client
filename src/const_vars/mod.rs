@@ -10,6 +10,8 @@ pub const DELETE_CHAT_URL: &'static str = "https://sydney.bing.com/sydney/Delete
 pub const CREATE_CHAT_URL: &'static str =
     "https://www.bing.com/turing/conversation/create?bundleVersion=1.1600.1-nodesign2";
 
+pub const RENAME_CHAT_URL: &'static str = "https://sydney.bing.com/sydney/RenameChat";
+
 pub fn gen_chat_hub_wss_url(sec_access_token: &str) -> String {
     format!(
         "wss://sydney.bing.com/sydney/ChatHub?sec_access_token={}",

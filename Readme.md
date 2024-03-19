@@ -47,6 +47,12 @@ let chat = client.create_chat().await.unwrap();
 client.delete_chat(&mut chat).await.unwrap();
 ```
 
+## Rename a chat
+
+```rust
+client..rename_chat(&mut chat, "new name".to_string()).await.unwrap();
+```
+
 ## Get chat messages
 
 ```rust

@@ -15,10 +15,10 @@ use crate::{
     const_vars::{
         gen_chat_hub_wss_url, gen_get_chat_messages_url, gen_get_chat_signature_url,
         gen_image_payload_url, CREATE_CHAT_URL, DELETE_CHAT_URL, GEN_IMAGE_ID_URL, GET_CHAT_ID_URL,
-        GET_CHAT_LIST_URL,
+        GET_CHAT_LIST_URL, RENAME_CHAT_URL,
     },
     types::{
-        bot_easy_resp_type::BotResp, chat_msg_type::EasyMsg, chat_type::{Chat, ChatListResp}, client_info_type::GetClientInfoResponse, create_chat_type::CreateChatChatResp, delete_chat_type::{DeleteChatPayload, DeleteChatResp}, user_input_type::UserInput
+        bot_easy_resp_type::BotResp, chat_msg_type::EasyMsg, chat_type::{Chat, ChatListResp}, client_info_type::GetClientInfoResponse, create_chat_type::CreateChatChatResp, delete_chat_type::{DeleteChatPayload, DeleteChatResp}, rename_chat_type::{RenameChatRequest, RenameChatResp}, user_input_type::UserInput
     },
     utils::{
         cookie_pre,
@@ -303,7 +303,36 @@ impl BingClient {
             ))
         }
     }
+    pub async fn rename_chat(&self, chat: &mut Chat, new_name:String) -> Result<(), anyhow::Error> {
+        if chat.x_sydney_conversationsignature.is_none() {
+            self.update_chat_signature(chat).await?;
+        }
+        let mut headers = self.gen_header()?;
+        headers.insert(
+            "Authorization",
+            reqwest::header::HeaderValue::from_str(&format!(
+                "Bearer {}",
+                chat.x_sydney_conversationsignature.clone().unwrap()
+            ))?,
+        );
+        let request = self
+            .reqwest_client
+            .post(RENAME_CHAT_URL)
+            .headers(headers)
+            .json(&RenameChatRequest::build(chat.conversation_id.to_string(), self.client_id.to_string(), new_name));
+        let resp: RenameChatResp = request.send().await?.json().await?;
 
+        if resp.result.value == "Success"{
+            Ok(())
+        }else {
+            Err(anyhow::anyhow!(
+                "Rename Bing Copilot Chat Failed; ConversationId: {}; Error Value: {}; Error Message: {:?}",
+                chat.conversation_id,
+                resp.result.value,
+                resp.result.message
+            ))
+        }
+    }
     pub async fn get_chat_messages(&self, chat: &mut Chat) -> Result<Vec<EasyMsg>, anyhow::Error> {
         if let None = chat.x_sydney_conversationsignature {
             self.update_chat_signature(chat).await?;

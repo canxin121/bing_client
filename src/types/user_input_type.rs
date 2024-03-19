@@ -493,7 +493,7 @@ pub struct Participant {
     pub id: String,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum Tone {
     Creative,
     Balanced,
@@ -535,7 +535,7 @@ impl UserInput {
             Some(image) => Some(client.gen_upload_image_url(image, chat).await?),
             None => None,
         };
-            Ok(UserInput {
+        Ok(UserInput {
             arguments: vec![Arguments::build(
                 tone,
                 plugins,
