@@ -1,11 +1,15 @@
 [package]
 name = "bing_client"
+description = "Async reverse client for Bing copilot"
 version = "0.1.0"
 edition = "2021"
-author = "canxin121"
-email = "q1969730106@gmail.com"
+authors = ["canxin121 <q1969730106@gmail.com>"]
+homepage = "https://github.com/canxin121/bing_client"
 repository = "https://github.com/canxin121/bing_client"
 license = "Apache-2.0 OR MIT"
+readme = "Readme.md" 
+keywords = ["bing", "copilot", "gpt"]
+categories = ["api-bindings", "asynchronous", "science::robotics", "web-programming"]
 
 [dependencies]
 anyhow = "1.0.80"
