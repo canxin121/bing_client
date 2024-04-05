@@ -18,14 +18,14 @@ use crate::{
         GET_CHAT_LIST_URL, RENAME_CHAT_URL,
     },
     types::{
-        bot_easy_resp_type::BotResp, chat_msg_type::EasyMsg, chat_type::{Chat, ChatListResp}, client_info_type::GetClientInfoResponse, create_chat_type::CreateChatChatResp, delete_chat_type::{DeleteChatPayload, DeleteChatResp}, rename_chat_type::{RenameChatRequest, RenameChatResp}, user_input_type::UserInput
+        bot_easy_resp_type::BotResp, chat_msg_type::EasyMsg, chat_type::{Chat, ChatListResp}, client_info_type::GetClientInfoResponse, cookie_type::Cookie, create_chat_type::CreateChatChatResp, delete_chat_type::{DeleteChatPayload, DeleteChatResp}, rename_chat_type::{RenameChatRequest, RenameChatResp}, user_input_type::UserInput
     },
     utils::{
-        cookie_pre,
+        cookie_pre::parse_cookie,
         draw_image::draw_image,
         image_base64::Image,
         msg_proces::add_suffix,
-        process_bot_resp::{json2bot_resp_type1, json2bot_resp_type2}, process_chat_msgs::process_chat_msgs,
+        process_bot_resp::{json2bot_resp_type1, json2bot_resp_type2}, process_chat_msgs::process_chat_msgs, stop_signal::StopSignal,
     },
 };
 
@@ -51,8 +51,9 @@ impl BingClient {
         );
         Ok(headers)
     }
-    async fn init(cookie_path: &str) -> Result<BingClient, anyhow::Error> {
-        let cookie_string = cookie_pre::file_cookie2str(cookie_path).await?;
+    
+    async fn init(cookie: &Cookie) -> Result<BingClient, anyhow::Error> {
+        let cookie_string = parse_cookie(cookie).await?;
         let mut headers = HeaderMap::new();
         headers.insert(reqwest::header::COOKIE, cookie_string.parse()?);
         headers.insert(
@@ -66,6 +67,7 @@ impl BingClient {
             chats: Vec::new(),
         })
     }
+    
     async fn update_chat_signature(&self, chat: &mut Chat) -> Result<(), anyhow::Error> {
         let resp = self
             .reqwest_client
@@ -104,16 +106,19 @@ impl BingClient {
             )),
         }
     }
-    pub async fn build(cookie_path: &str) -> Result<BingClient, anyhow::Error> {
-        let mut client = Self::init(cookie_path).await?;
+    
+    pub async fn build(cookie: &Cookie) -> Result<BingClient, anyhow::Error> {
+        let mut client = Self::init(cookie).await?;
         client.update_client_id().await?;
         Ok(client)
     }
-    pub async fn build_with_chats(cookie_path: &str) -> Result<BingClient, anyhow::Error> {
-        let mut client = Self::init(cookie_path).await?;
+    
+    pub async fn build_with_chats(cookie: &Cookie) -> Result<BingClient, anyhow::Error> {
+        let mut client = Self::init(cookie).await?;
         client.update_chats_client_id().await?;
         Ok(client)
     }
+    
     pub(crate) async fn gen_upload_image_url(
         &self,
         image: Image,
@@ -167,6 +172,7 @@ impl BingClient {
             )),
         }
     }
+    
     pub async fn update_client_id(&mut self) -> Result<(), anyhow::Error> {
         // this fn changes self.chat and self.client_id
         let resp: GetClientInfoResponse = self
@@ -376,8 +382,8 @@ impl BingClient {
         &'a self,
         chat: &'a mut Chat,
         user_input: UserInput,
-    ) -> Result<Gen<String, (), impl Future<Output = ()> + 'a>, anyhow::Error> {
-        let mut stream = self.ask_stream(chat, user_input).await?;
+    ) -> Result<(Gen<String, (), impl Future<Output = ()> + 'a>,impl Fn()), anyhow::Error> {
+        let  (mut stream,stop_fn) = self.ask_stream(chat, user_input).await?;
         let mut suggest_replt_text = String::new();
         let mut image_text = String::new();
         let mut source_text = String::new();
@@ -410,14 +416,14 @@ impl BingClient {
             ))
             .await;
         });
-        Ok(chat_gen)
+        Ok((chat_gen,stop_fn))
     }
 
     pub async fn ask_stream<'a>(
         &'a self,
         chat: &'a mut Chat,
         user_input: UserInput,
-    ) -> Result<Gen<BotResp, (), impl Future<Output = ()> + 'a>, anyhow::Error> {
+    ) -> Result<(Gen<BotResp, (), impl Future<Output = ()> + 'a>,impl Fn()), anyhow::Error> {
         if let None = chat.x_sydney_encryptedconversationsignature {
             self.update_chat_signature(chat).await?
         }
@@ -434,6 +440,11 @@ impl BingClient {
 
         let handshake_msg = add_suffix(json!({"protocol":"json","version":1}).to_string());
         let echo_msg = add_suffix(json!({"type":6}).to_string());
+        let stop_msg = add_suffix(json!({"arguments":[{}],"invocationId":"3","target":"stop","type":1}).to_string());
+        
+        let signal = StopSignal::new();
+        let stop_fn = signal.stop_fn();
+
         write.send(Text(handshake_msg)).await?;
         read.next().await;
         write.send(Text(echo_msg.clone())).await?;
@@ -445,6 +456,9 @@ impl BingClient {
             let mut tasks_handle: Vec<tokio::task::JoinHandle<BotResp>> = Vec::new();
             let mut shutdown = false;
             while let Some(ws_msg_rst) = read.next().await {
+                if signal.check_stop(){
+                    write.send(Text(stop_msg.clone())).await.unwrap();
+                }
                 match ws_msg_rst {
                     Ok(ws_msg) => match ws_msg {
                         Text(texts) => {
@@ -468,6 +482,7 @@ impl BingClient {
                                                         co.yield_(botresp).await;
                                                     }
                                                 }
+                                                // 如果正常回答完毕，则最后消息为2类型
                                                 2 => {
                                                     if let Ok(bot_resps) =
                                                         json2bot_resp_type2(&json)
@@ -479,6 +494,12 @@ impl BingClient {
                                                     shutdown = true;
                                                     break;
                                                 }
+                                                // 如果用户取消回答，则最后消息为3类型
+                                                3=>{
+                                                    shutdown = true;
+                                                    break;
+                                                }
+                                                // 6消息类型为心跳数据，我们直接跟随服务器端进行心跳即可
                                                 6 => {
                                                     let _ =
                                                         write.send(Text(echo_msg.clone())).await;
@@ -515,7 +536,7 @@ impl BingClient {
                 }
             }
         });
-        Ok(chat_gen)
+        Ok((chat_gen,stop_fn))
     }
 }
 
