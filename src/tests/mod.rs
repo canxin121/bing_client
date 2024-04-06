@@ -176,11 +176,11 @@ mod test {
 
         while let GeneratorState::Yielded(data) = stream.async_resume().await {
             times += 1;
-            if times == 4{
+            if times == 4 {
                 println!("try stop");
                 stop_fn();
             }
-            print!("{} ",data.len());
+            print!("{} ", data.len());
         }
     }
 

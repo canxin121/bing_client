@@ -6,6 +6,12 @@ pub struct Image {
     pub url: String,
 }
 
+impl Display for Image {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "![{}]({})", self.name, self.url)
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Limit {
     #[serde(rename = "maxNumUserMessagesInConversation")]

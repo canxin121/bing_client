@@ -382,12 +382,12 @@ impl BingClient {
         &'a self,
         chat: &'a mut Chat,
         user_input: UserInput,
-    ) -> Result<(Gen<String, (), impl Future<Output = ()> + 'a>,impl Fn()), anyhow::Error> {
-        let  (mut stream,stop_fn) = self.ask_stream(chat, user_input).await?;
-        let mut suggest_replt_text = String::new();
-        let mut image_text = String::new();
-        let mut source_text = String::new();
-        let mut limit_text = String::new();
+    ) -> Result<(Gen<String, (), impl Future<Output = ()> + 'a>, impl Fn()), anyhow::Error> {
+        let (mut stream, stop_fn) = self.ask_stream(chat, user_input).await?;
+        let mut suggests:Vec<String>= Vec::new();
+        let mut images:Vec<crate::types::bot_easy_resp_type::Image> = Vec::new();
+        let mut sources:Vec<crate::types::bot_easy_resp_type::SourceAttribution> = Vec::new();
+        let mut limit_text = Vec::new();
         let mut plain_text = String::new();
         let chat_gen = Gen::new(|co| async move {
             while let GeneratorState::Yielded(data) = stream.async_resume().await {
@@ -396,29 +396,51 @@ impl BingClient {
                         plain_text = text.to_owned();
                         co.yield_(text).await;
                     }
-                    crate::types::bot_easy_resp_type::BotResp::SuggestReply(_) => {
-                        suggest_replt_text += &data.to_string();
+                    crate::types::bot_easy_resp_type::BotResp::SuggestReply(mut suggest_vec) => {
+                        suggests.append(&mut suggest_vec);
                     }
-                    crate::types::bot_easy_resp_type::BotResp::Image(_) => {
-                        image_text += &data.to_string();
+                    crate::types::bot_easy_resp_type::BotResp::Image(mut image_vec) => {
+                        images.append(&mut image_vec);
                     }
-                    crate::types::bot_easy_resp_type::BotResp::SourceAttribution(_) => {
-                        source_text += &data.to_string();
+                    crate::types::bot_easy_resp_type::BotResp::SourceAttribution(mut source_vec) => {
+                        sources.append(&mut source_vec);
                     }
-                    crate::types::bot_easy_resp_type::BotResp::Limit(_) => {
-                        limit_text += &data.to_string();
+                    crate::types::bot_easy_resp_type::BotResp::Limit(text) => {
+                        limit_text.push(text);
                     }
                     _ => {}
                 }
             }
-            co.yield_(format!(
-                "{plain_text}\n{image_text}\nSources: \n{source_text}\nSuggest Replys: \n{suggest_replt_text}\n{limit_text}"
-            ))
-            .await;
+            let mut result = plain_text;
+            if !images.is_empty() {
+                result += "\nImages:\n\n";
+                for (index, image) in images.iter().enumerate() {
+                    result += &format!("{}. {}\n", index + 1, image);
+                }
+            }
+            if !sources.is_empty() {
+                result += "\nSources:\n\n";
+                for (index, source) in sources.iter().enumerate() {
+                    result += &format!("{}. {}\n", index + 1, source);
+                }
+            }
+            if !suggests.is_empty() {
+                result += "\nSuggest Replys:\n\n";
+                for (index, suggest) in suggests.iter().enumerate() {
+                    result += &format!("{}. {}\n", index + 1, suggest);
+                }
+            }
+            if !limit_text.is_empty() {
+                result += "\nLimits:\n\n";
+                for (index, limit) in limit_text.iter().enumerate() {
+                    result += &format!("{}. {}\n", index + 1, limit);
+                }
+            }
+            co.yield_(result).await;
         });
-        Ok((chat_gen,stop_fn))
+        Ok((chat_gen, stop_fn))
     }
-
+    
     pub async fn ask_stream<'a>(
         &'a self,
         chat: &'a mut Chat,

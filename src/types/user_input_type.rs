@@ -500,13 +500,24 @@ pub enum Tone {
     Precise,
 }
 
+impl Tone {
+    pub fn build_by_name(name: &str) -> Option<Self> {
+        match name {
+            "Creative" => Some(Self::Creative),
+            "Balanced" => Some(Self::Balanced),
+            "Precise" => Some(Self::Precise),
+            _ => None,
+        }
+    }
+}
+
 impl Display for Tone {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", {
             match self {
                 Self::Creative => "Creative",
                 Self::Balanced => "Balanced",
-                Self::Precise => "Balanced",
+                Self::Precise => "Precise",
             }
         })
     }
@@ -535,10 +546,29 @@ impl UserInput {
             Some(image) => Some(client.gen_upload_image_url(image, chat).await?),
             None => None,
         };
+        let final_plugins = {
+            if !chat.plugins.is_empty() {
+                chat.plugins.clone()
+            } else {
+                plugins
+            }
+        };
+        let final_tone = {
+            if let Some(name) = &chat.tone {
+                {}
+                if let Some(tone) = Tone::build_by_name(&name) {
+                    tone
+                } else {
+                    tone
+                }
+            } else {
+                tone
+            }
+        };
         Ok(UserInput {
             arguments: vec![Arguments::build(
-                tone,
-                plugins,
+                final_tone,
+                final_plugins,
                 uuid,
                 text_message,
                 image_url,
