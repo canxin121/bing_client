@@ -73,7 +73,7 @@ mod test {
                 .await
                 .unwrap();
         let mut last_chat = client.chats.last().unwrap().clone();
-        match client.delete_chats(vec![&mut last_chat]).await {
+        match client.delete_chats(crate::TodelChats::Chats(vec![&mut last_chat])).await {
             Ok(_) => {
                 println!("删除成功")
             }

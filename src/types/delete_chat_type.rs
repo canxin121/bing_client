@@ -1,4 +1,4 @@
-use crate::types::Result;
+use crate::{types::Result, Chat};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -62,4 +62,9 @@ pub struct DeleteChatsResp {
     #[serde(rename = "conversationIdsDeleted")]
     pub conversation_ids_deleted: Vec<String>,
     pub result: Result,
+}
+
+pub enum TodelChats<'a> {
+    Chats(Vec<&'a mut Chat>),
+    Ids(Vec<String>),
 }

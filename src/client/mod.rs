@@ -17,7 +17,7 @@ use crate::{
         gen_chat_hub_wss_url, gen_get_chat_messages_url, gen_get_chat_signature_url, gen_image_payload_url, CREATE_CHAT_URL, DELETE_CHATS_URL, DELETE_CHAT_URL, GEN_IMAGE_ID_URL, GET_CHAT_ID_URL, GET_CHAT_LIST_URL, RENAME_CHAT_URL
     },
     types::{
-        bot_easy_resp_type::BotResp, chat_msg_type::EasyMsg, chat_type::{Chat, ChatListResp}, client_info_type::GetClientInfoResponse, cookie_type::Cookie, create_chat_type::CreateChatChatResp, delete_chat_type::{DeleteChatPayload, DeleteChatResp, DeleteChatsPayload, DeleteChatsResp}, rename_chat_type::{RenameChatRequest, RenameChatResp}, user_input_type::UserInput
+        bot_easy_resp_type::BotResp, chat_msg_type::EasyMsg, chat_type::{Chat, ChatListResp}, client_info_type::GetClientInfoResponse, cookie_type::Cookie, create_chat_type::CreateChatChatResp, delete_chat_type::{DeleteChatPayload, DeleteChatResp, DeleteChatsPayload, DeleteChatsResp, TodelChats}, rename_chat_type::{RenameChatRequest, RenameChatResp}, user_input_type::UserInput
     },
     utils::{
         cookie_pre::parse_cookie,
@@ -309,11 +309,16 @@ impl BingClient {
         }
     }
 
-    pub async fn delete_chats(&self, chat: Vec<&mut Chat>) -> Result<(), anyhow::Error> {
+    pub async fn delete_chats<'a>(&self, chats: TodelChats<'a>) -> Result<(), anyhow::Error> {
+        let ids = match chats {
+            TodelChats::Chats(chats) => chats.iter().map(|chat|{chat.conversation_id.to_string()}).collect::<Vec<String>>(),
+            TodelChats::Ids(ids) => ids,
+        };
+
         let request = self
             .reqwest_client
             .post(DELETE_CHATS_URL)
-            .json(&DeleteChatsPayload::build(chat.iter().map(|chat|{chat.conversation_id.to_string()}).collect::<Vec<String>>()));
+            .json(&DeleteChatsPayload::build(ids));
         let resp: DeleteChatsResp = request.send().await?.json().await?;
 
         if resp.result.value == "Success" {
