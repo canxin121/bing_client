@@ -31,15 +31,13 @@ pub const GEN_IMAGE_ID_URL: &'static str = "https://www.bing.com/images/kblob";
 
 pub fn gen_draw_image_url(prompt: &str) -> String {
     let prompt = format!("prompt='{}'", prompt);
-    format!("https://www.bing.com/images/create?partner=sydney&re=1&showselective=1&sude=1&kseed=8000&SFX=3&q={}&iframeid={}",encode(&prompt),Uuid::new_v4().to_string())
+    format!("https://www.bing.com/images/create?partner=sydney&re=1&showselective=1&sude=1&kseed=8000&SFX=3&q={}&iframeid={}&rt=3",encode(&prompt),Uuid::new_v4().to_string())
 }
 
-pub fn gen_get_images_url(prompt: &str, request_id: &str) -> String {
-    let prompt = format!("prompt='{}'", prompt);
+pub fn gen_get_images_url(request_id: &str) -> String {
     format!(
-        "https://www.bing.com/images/create/async/results/{}?q={}",
+        "https://www.bing.com/images/create/async/results/{}?showselective=1&partner=sydney&FORM=SYDBIC",
         request_id,
-        encode(&prompt)
     )
 }
 

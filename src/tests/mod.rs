@@ -68,10 +68,12 @@ mod test {
 
     #[tokio::test]
     async fn test_get_chat_msgs() {
-        let client =
+        let client = 
+            // BingClient::build_with_chats(&Cookie::HeadPath("_data/cookie".to_string()))
             BingClient::build_with_chats(&Cookie::JsonPath("_data/cookie.json".to_string()))
-                .await
-                .unwrap();
+            .await
+            .unwrap();
+        println!("{}", client.cookie_str);
         let mut last_chat = client.chats.first().unwrap().clone();
         match client.get_chat_messages(&mut last_chat).await {
             Ok(value) => {
@@ -118,12 +120,12 @@ mod test {
 
     #[tokio::test]
     async fn test_plain_chat() {
-        let client = BingClient::build(&Cookie::JsonPath("_data/cookie.json".to_string()))
+        let client = BingClient::build(&Cookie::HeadPath("_data/cookie".to_string()))
             .await
             .unwrap();
         let mut new_chat = client.create_chat().await.unwrap();
         let user_input = UserInput::build(
-            "什么东西早上四条腿中午两条腿晚上三条腿？".to_string(),
+            "画一只猫".to_string(),
             // Some(Image::Path(
             //     r"D:\Git\bing_client\_data\{0AF8F716-2078-47e8-8842-01C8EC62D911}.png".to_string(),
             // )),
@@ -142,7 +144,6 @@ mod test {
             .await
             .unwrap();
         while let GeneratorState::Yielded(data) = stream.async_resume().await {
-            print!("\x1b[2J\x1b[H");
             println!("{data}");
         }
     }

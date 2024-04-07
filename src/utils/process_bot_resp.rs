@@ -107,7 +107,7 @@ fn process_text_msg(
                     }
                     Err(e) => {
                         return BotResp::Apology(format!(
-                            "Bing Copilot Draw Image Failed; Error Message: {:?}",
+                            "Bing Copilot Draw Image Failed; Error Message: {}",
                             e
                         ));
                     }

@@ -31,7 +31,7 @@ pub async fn draw_image(
         .headers(reqwest_header.clone())
         .send()
         .await?;
-    let request_id = response
+    let mut request_id = response
         .headers()
         .get("location")
         .ok_or(anyhow::anyhow!("Drawing Failed: Redirect failed"))?
@@ -40,10 +40,14 @@ pub async fn draw_image(
         .split("id=")
         .last()
         .ok_or(anyhow::anyhow!("Drawing Failed: Invalid location header"))?;
-
-    let polling_url = gen_get_images_url(prompt, request_id);
-
+    request_id = &request_id.split('&').collect::<Vec<&str>>()[0];
+    let polling_url = gen_get_images_url(request_id);
+    let mut times = 100;
     let content = loop {
+        times -= 1;
+        if times < 0 {
+            return Err(anyhow::anyhow!("Drawing Failed: Timed out."));
+        }
         let response = client
             .get(&polling_url)
             .headers(reqwest_header.clone())
@@ -64,7 +68,7 @@ pub async fn draw_image(
             .iter()
             .enumerate()
             .map(|(index, link)| crate::types::bot_easy_resp_type::Image {
-                name: format!("bing_image_{}.jpg", index+1),
+                name: format!("bing_image_{}.jpg", index + 1),
                 url: link.to_string(),
             })
             .collect();

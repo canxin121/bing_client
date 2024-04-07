@@ -1,11 +1,12 @@
 use std::{future::Future, str::FromStr};
 
-use futures_util::{SinkExt, StreamExt};
+use futures_util::{future::join_all, SinkExt, StreamExt};
 use genawaiter::{sync::Gen, GeneratorState};
 use http::HeaderValue;
 use reqwest::{header::HeaderMap, multipart, Client as ReqwestClient, StatusCode};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use tokio::{join, task::JoinError};
 use tokio_tungstenite::{
     connect_async,
     tungstenite::{client::IntoClientRequest, Message::Text},
@@ -552,9 +553,15 @@ impl BingClient {
                     },
                 }
             }
-            for task in tasks_handle {
-                if let Ok(bot_resp) = task.await {
-                    co.yield_(bot_resp).await;
+            let resp_results:Vec<Result<BotResp, JoinError>>= join_all(tasks_handle).await;
+            for resp_result in resp_results{
+                match resp_result  {
+                    Ok(resp) => {
+                        co.yield_(resp).await;
+                    },
+                    Err(e) => {
+                        co.yield_(BotResp::Apology(format!("Bing Copilot Draw Image Join Failed; Error Message: {}",e))).await;
+                    },
                 }
             }
         });
