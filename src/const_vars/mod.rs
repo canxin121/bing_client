@@ -6,6 +6,8 @@ pub const GET_CHAT_LIST_URL: &'static str =
     "https://www.bing.com/turing/conversation/chats?bundleVersion=1.1626.0";
 
 pub const DELETE_CHAT_URL: &'static str = "https://sydney.bing.com/sydney/DeleteSingleConversation";
+pub const DELETE_CHATS_URL: &'static str =
+    "https://www.bing.com/turing/conversation/deleteChats?bundleVersion=1.1678.0";
 
 pub const CREATE_CHAT_URL: &'static str =
     "https://www.bing.com/turing/conversation/create?bundleVersion=1.1600.1-nodesign2";

@@ -30,6 +30,20 @@ impl DeleteChatPayload {
 }
 
 #[derive(Deserialize, Serialize, Debug)]
+pub struct DeleteChatsPayload {
+    #[serde(rename = "conversationIdsToDelete")]
+    conversation_ids_to_delete: Vec<String>,
+}
+
+impl DeleteChatsPayload {
+    pub fn build(conversation_ids: Vec<String>) -> DeleteChatsPayload {
+        DeleteChatsPayload {
+            conversation_ids_to_delete: conversation_ids,
+        }
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug)]
 pub struct Participant {
     pub id: String,
 }
@@ -40,5 +54,12 @@ pub struct DeleteChatResp {
     pub conversation_id: Option<String>,
     #[serde(rename = "clientId")]
     pub client_id: Option<String>,
+    pub result: Result,
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct DeleteChatsResp {
+    #[serde(rename = "conversationIdsDeleted")]
+    pub conversation_ids_deleted: Vec<String>,
     pub result: Result,
 }

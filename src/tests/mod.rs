@@ -65,6 +65,23 @@ mod test {
             }
         }
     }
+    
+    #[tokio::test]
+    async fn test_del_chats() {
+        let client =
+            BingClient::build_with_chats(&Cookie::JsonPath("_data/cookie.json".to_string()))
+                .await
+                .unwrap();
+        let mut last_chat = client.chats.last().unwrap().clone();
+        match client.delete_chats(vec![&mut last_chat]).await {
+            Ok(_) => {
+                println!("删除成功")
+            }
+            Err(e) => {
+                println!("删除失败!\n{e}")
+            }
+        }
+    }
 
     #[tokio::test]
     async fn test_get_chat_msgs() {

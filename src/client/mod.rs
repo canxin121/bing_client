@@ -14,12 +14,10 @@ use tokio_tungstenite::{
 
 use crate::{
     const_vars::{
-        gen_chat_hub_wss_url, gen_get_chat_messages_url, gen_get_chat_signature_url,
-        gen_image_payload_url, CREATE_CHAT_URL, DELETE_CHAT_URL, GEN_IMAGE_ID_URL, GET_CHAT_ID_URL,
-        GET_CHAT_LIST_URL, RENAME_CHAT_URL,
+        gen_chat_hub_wss_url, gen_get_chat_messages_url, gen_get_chat_signature_url, gen_image_payload_url, CREATE_CHAT_URL, DELETE_CHATS_URL, DELETE_CHAT_URL, GEN_IMAGE_ID_URL, GET_CHAT_ID_URL, GET_CHAT_LIST_URL, RENAME_CHAT_URL
     },
     types::{
-        bot_easy_resp_type::BotResp, chat_msg_type::EasyMsg, chat_type::{Chat, ChatListResp}, client_info_type::GetClientInfoResponse, cookie_type::Cookie, create_chat_type::CreateChatChatResp, delete_chat_type::{DeleteChatPayload, DeleteChatResp}, rename_chat_type::{RenameChatRequest, RenameChatResp}, user_input_type::UserInput
+        bot_easy_resp_type::BotResp, chat_msg_type::EasyMsg, chat_type::{Chat, ChatListResp}, client_info_type::GetClientInfoResponse, cookie_type::Cookie, create_chat_type::CreateChatChatResp, delete_chat_type::{DeleteChatPayload, DeleteChatResp, DeleteChatsPayload, DeleteChatsResp}, rename_chat_type::{RenameChatRequest, RenameChatResp}, user_input_type::UserInput
     },
     utils::{
         cookie_pre::parse_cookie,
@@ -310,6 +308,25 @@ impl BingClient {
             ))
         }
     }
+
+    pub async fn delete_chats(&self, chat: Vec<&mut Chat>) -> Result<(), anyhow::Error> {
+        let request = self
+            .reqwest_client
+            .post(DELETE_CHATS_URL)
+            .json(&DeleteChatsPayload::build(chat.iter().map(|chat|{chat.conversation_id.to_string()}).collect::<Vec<String>>()));
+        let resp: DeleteChatsResp = request.send().await?.json().await?;
+
+        if resp.result.value == "Success" {
+            Ok(())
+        } else {
+            Err(anyhow::anyhow!(
+                "Delete Bing Copilot Chats Failed; Error Value: {}; Error Message: {:?}",
+                resp.result.value,
+                resp.result.message
+            ))
+        }
+    }
+
     pub async fn rename_chat(&self, chat: &mut Chat, new_name:String) -> Result<(), anyhow::Error> {
         if chat.x_sydney_conversationsignature.is_none() {
             self.update_chat_signature(chat).await?;
