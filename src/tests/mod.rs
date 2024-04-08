@@ -4,7 +4,7 @@ mod test {
 
     use genawaiter::GeneratorState;
     use tokio::io::AsyncWriteExt;
-
+    
     use crate::{
         client::BingClient,
         types::{cookie_type::Cookie, plugin_type::Plugin, user_input_type::UserInput},
@@ -136,12 +136,13 @@ mod test {
 
     #[tokio::test]
     async fn test_plain_chat() {
-        let client = BingClient::build(&&Cookie::JsonPath("_data/cookie.json".to_string()))
+        let client = BingClient::build_with_chats(&&Cookie::JsonPath("_data/cookie.json".to_string()))
             .await
             .unwrap();
-        let new_chat = client.create_chat().await.unwrap();
+        let chat = client.chats.last().unwrap();
+        // let chat = client.create_chat().await.unwrap();
         let user_input = UserInput::build(
-            "在吗".to_string(),
+            "写一个科幻小说".to_string(),
             // Some(Image::Path(
             //     r"D:\Git\bing_client\_data\{0AF8F716-2078-47e8-8842-01C8EC62D911}.png".to_string(),
             // )),
@@ -150,13 +151,13 @@ mod test {
             vec![
             // Plugin::search()
             ],
-            &new_chat,
+            &chat,
             &client,
         )
         .await
         .unwrap();
         let (mut stream, _stop_fn) = client
-            .ask_stream_plain(& new_chat, user_input)
+            .ask_stream_plain(& chat, user_input)
             .await
             .unwrap();
         while let GeneratorState::Yielded(data) = stream.async_resume().await {
@@ -254,5 +255,17 @@ mod test {
         let last_chat = client.chats.last().unwrap();
         println!("{:?}", last_chat);
         client.delete_chat(& last_chat).await.unwrap();
+    }
+    
+    #[tokio::test]
+    async fn build_chat_msg() {
+        let client =
+            BingClient::build_with_chats(&Cookie::JsonPath("_data/cookie.json".to_string()))
+                .await
+                .unwrap();
+        let chat = client.create_chat().await.unwrap();
+        let userinput = UserInput::build("在吗".to_string(), None, crate::Tone::Creative, vec![], &chat, &client).await.unwrap();
+        let json = serde_json::to_string(&userinput).unwrap();
+        println!("{}",json);
     }
 }

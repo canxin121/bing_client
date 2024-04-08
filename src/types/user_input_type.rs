@@ -44,9 +44,9 @@ impl Arguments {
     ) -> Arguments {
         Arguments {
             source: "cib".to_string(),
-            optionsSets: OptionsSets::creative(),
-            allowedMessageTypes: AllowedMessageTypes::creative(),
-            sliceIds: SliceIds::creative(),
+            optionsSets: OptionsSets::from_tone(&tone),
+            allowedMessageTypes: AllowedMessageTypes::from_tone(&tone),
+            sliceIds: SliceIds::from_tone(&tone),
             verbosity: "verbose".to_string(),
             scenario: "SERP".to_string(),
             plugins: plugins,
@@ -72,19 +72,19 @@ impl Arguments {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-#[allow(non_snake_case)]
-pub struct OptionsSets(pub Vec<String>);
-
-impl From<Tone> for OptionsSets {
-    fn from(value: Tone) -> Self {
-        match value {
+impl OptionsSets {
+    fn from_tone(tone: &Tone) -> Self {
+        match tone {
             Tone::Creative => Self::creative(),
             Tone::Balanced => Self::balanced(),
             Tone::Precise => Self::precise(),
         }
     }
 }
+
+#[derive(Debug, Serialize, Deserialize)]
+#[allow(non_snake_case)]
+pub struct OptionsSets(pub Vec<String>);
 
 impl OptionsSets {
     pub fn creative() -> OptionsSets {
@@ -98,38 +98,46 @@ impl OptionsSets {
             "autosave",
             "iyxapbing",
             "iycapbing",
+            "h3imaginative",
+            "clgalileo",
+            "enbela",
+            "gndlogcf",
+            "saisgrdcf",
+            "codeintfilev2",
+            "gptv1desc2",
+            "eredirecturl",
             "enable_user_consent",
             "fluxmemcst",
-            "galileo",
-            "saharagenconv5",
-            "gldcl1p",
-            "techinstgnd",
-            "hourthrot",
-            "elec2t",
-            "elecgnd",
-            "vidtoppb",
-            "eredirecturl"
+            "ldsummary",
+            "ldqa",
+            "sdretrieval",
+            "nosearchall"
         ])
     }
     pub fn balanced() -> OptionsSets {
         OptionsSets(vec_string![
-            "ActionRequest",
-            "Chat",
-            "ConfirmationCard",
-            "Context",
-            "InternalSearchQuery",
-            "InternalSearchResult",
-            "Disengaged",
-            "InternalLoaderMessage",
-            "Progress",
-            "RenderCardRequest",
-            "RenderContentRequest",
-            "AdsQuery",
-            "SemanticSerp",
-            "GenerateContentQuery",
-            "SearchQuery",
-            "GeneratedCode",
-            "InternalTasksMessage"
+            "nlu_direct_response_filter",
+            "deepleo",
+            "disable_emoji_spoken_text",
+            "responsible_ai_policy_235",
+            "enablemm",
+            "dv3sugg",
+            "autosave",
+            "iyxapbing",
+            "iycapbing",
+            "galileo",
+            "enbela",
+            "gndlogcf",
+            "saisgrdcf",
+            "codeintfilev2",
+            "gptv1desc2",
+            "eredirecturl",
+            "enable_user_consent",
+            "fluxmemcst",
+            "ldsummary",
+            "ldqa",
+            "sdretrieval",
+            "nosearchall"
         ])
     }
     pub fn precise() -> OptionsSets {
@@ -144,16 +152,19 @@ impl OptionsSets {
             "iyxapbing",
             "iycapbing",
             "h3precise",
-            "sunoupsell",
-            "techinstgnd",
-            "vidtoppb",
-            "flxvsearch",
-            "noknowimg",
+            "enbela",
+            "gndlogcf",
+            "saisgrdcf",
+            "codeintfilev2",
+            "gptv1desc2",
             "eredirecturl",
-            "clgalileo",
-            "gencontentv3",
             "enable_user_consent",
-            "fluxmemcst"
+            "fluxmemcst",
+            "ldsummary",
+            "ldqa",
+            "sdretrieval",
+            "clgalileo",
+            "nosearchall"
         ])
     }
 }
@@ -162,9 +173,9 @@ impl OptionsSets {
 #[allow(non_snake_case)]
 pub struct AllowedMessageTypes(pub Vec<String>);
 
-impl From<Tone> for AllowedMessageTypes {
-    fn from(value: Tone) -> Self {
-        match value {
+impl AllowedMessageTypes {
+    fn from_tone(tone: &Tone) -> Self {
+        match tone {
             Tone::Creative => Self::creative(),
             Tone::Balanced => Self::balanced(),
             Tone::Precise => Self::precise(),
@@ -191,7 +202,8 @@ impl AllowedMessageTypes {
             "GenerateContentQuery",
             "SearchQuery",
             "GeneratedCode",
-            "InternalTasksMessage"
+            "InternalTasksMessage",
+            "Disclaimer"
         ])
     }
     pub fn balanced() -> AllowedMessageTypes {
@@ -212,7 +224,8 @@ impl AllowedMessageTypes {
             "GenerateContentQuery",
             "SearchQuery",
             "GeneratedCode",
-            "InternalTasksMessage"
+            "InternalTasksMessage",
+            "Disclaimer"
         ])
     }
     pub fn precise() -> AllowedMessageTypes {
@@ -233,7 +246,8 @@ impl AllowedMessageTypes {
             "GenerateContentQuery",
             "SearchQuery",
             "GeneratedCode",
-            "InternalTasksMessage"
+            "InternalTasksMessage",
+            "Disclaimer"
         ])
     }
 }
@@ -242,81 +256,117 @@ impl AllowedMessageTypes {
 #[allow(non_snake_case)]
 pub struct SliceIds(pub Vec<String>);
 
-impl From<Tone> for SliceIds {
-    fn from(value: Tone) -> Self {
-        match value {
-            Tone::Creative => Self::creative(),
-            Tone::Balanced => Self::balanced(),
-            Tone::Precise => Self::precise(),
-        }
-    }
-}
-
 impl SliceIds {
     pub fn creative() -> SliceIds {
         SliceIds(vec_string![
-            "301hlink",
-            "scmcbasecf",
+            "inputdes3cf",
+            "0311tccs0",
+            "gldidentitycf",
+            "visperf",
+            "visibilityperf",
+            "engmhcf",
+            "qnav2table1",
+            "fltltstcf",
+            "cntralignc",
+            "streamw",
+            "bcece403t",
+            "romiccf",
+            "rwt2",
             "cmcpupsalltf",
-            "cdxsyddp2",
-            "0301techgnd",
-            "220dcl1s0",
-            "0215wcrwip",
-            "0312hrthrot",
-            "0228elecgnd",
-            "bingfccf",
-            "0225unsticky1",
-            "308videopb",
-            "0228scss0",
-            "defcontrol",
-            "3022tpvs0"
+            "advtokc",
+            "315endltall",
+            "shopgptctrl",
+            "320enbela",
+            "0215wcrwippsr",
+            "0328scnd",
+            "fpsrhsticy",
+            "0306flowvaca",
+            "gptsmobile0",
+            "328fixissuess0",
+            "saisgrds0",
+            "228pyfile",
+            "ecipc",
+            "kcclickthrucf",
+            "cacfrwebt2cf",
+            "sswebtop2cf"
         ])
     }
     pub fn balanced() -> SliceIds {
         SliceIds(vec_string![
-            "301hlink",
-            "nodesign",
-            "stpstream",
-            "stpsig",
-            "scmcbase",
+            "inputdes3cf",
+            "0311tccs0",
+            "gldidentitycf",
+            "visperf",
+            "visibilityperf",
+            "engmhcf",
+            "qnav2table1",
+            "fltltstcf",
+            "cntralignc",
+            "streamw",
+            "bcece403t",
+            "romiccf",
+            "rwt2",
             "cmcpupsalltf",
-            "sydtransctrl",
-            "thdnsrchcf",
-            "sunoupsell",
-            "0301techgnd",
-            "220dcl1s0",
+            "advtokc",
+            "315endltall",
+            "shopgptctrl",
+            "320enbela",
             "0215wcrwippsr",
-            "0312hrthrots0",
-            "bingfc",
-            "kcicddfix",
-            "kcremovedot",
-            "0225unsticky1",
-            "308videopb",
-            "3022tphpv"
+            "0328scnd",
+            "fpsrhsticy",
+            "0306flowvaca",
+            "gptsmobile0",
+            "328fixissuess0",
+            "saisgrds0",
+            "228pyfile",
+            "ecipc",
+            "kcclickthrucf",
+            "cacfrwebt2cf",
+            "sswebtop2cf"
         ])
     }
     pub fn precise() -> SliceIds {
         SliceIds(vec_string![
-            "301hlink",
-            "nodesign",
-            "stpstream",
-            "stpsig",
-            "scmcbase",
+            "inputdes3cf",
+            "0311tccs0",
+            "gldidentitycf",
+            "visperf",
+            "visibilityperf",
+            "engmhcf",
+            "qnav2table1",
+            "fltltstcf",
+            "cntralignc",
+            "streamw",
+            "bcece403t",
+            "romiccf",
+            "rwt2",
             "cmcpupsalltf",
-            "sydtransctrl",
-            "thdnsrchcf",
-            "sunoupsell",
-            "0301techgnd",
-            "220dcl1s0",
+            "advtokc",
+            "315endltall",
+            "shopgptctrl",
+            "320enbela",
             "0215wcrwippsr",
-            "0312hrthrots0",
-            "bingfc",
-            "kcicddfix",
-            "kcremovedot",
-            "0225unsticky1",
-            "308videopb",
-            "3022tphpv"
+            "0328scnd",
+            "fpsrhsticy",
+            "0306flowvaca",
+            "gptsmobile0",
+            "328fixissuess0",
+            "saisgrds0",
+            "228pyfile",
+            "ecipc",
+            "kcclickthrucf",
+            "cacfrwebt2cf",
+            "sswebtop2cf"
         ])
+    }
+}
+impl SliceIds {
+    fn from_tone(tone: &Tone) -> Self {
+        match tone {
+            Tone::Creative => Self::creative(),
+            Tone::Balanced => Self::balanced(),
+            Tone::Precise => Self::precise(),
+        }
     }
 }
 
@@ -362,7 +412,7 @@ impl Default for LocationHints {
             Accuracy: 24902,
             FDConfidence: 0,
             CountryName: "Singapore".to_string(),
-            CountryConfidence: 0,
+            CountryConfidence: 8,
             Admin1Name: "Central Singapore Community Development Council".to_string(),
             PopulatedPlaceName: "Singapore".to_string(),
             PopulatedPlaceConfidence: 0,
@@ -379,45 +429,6 @@ pub struct Center {
     Latitude: f64,
     Longitude: f64,
 }
-
-// "message": {
-//     "locale": "en-US",
-//     "market": "en-US",
-//     "region": "US",
-//     "location": "lat:47.639557;long:-122.128159;re=1000m;",
-//     "locationHints": [
-//       {
-//         "SourceType": 1,
-//         "RegionType": 2,
-//         "Center": {
-//           "Latitude": 1.3056000471115112,
-//           "Longitude": 103.822998046875
-//         },
-//         "Radius": 24902,
-//         "Name": "Singapore, Central Singapore Community Development Council",
-//         "Accuracy": 24902,
-//         "FDConfidence": 0,
-//         "CountryName": "Singapore",
-//         "CountryConfidence": 0,
-//         "Admin1Name": "Central Singapore Community Development Council",
-//         "PopulatedPlaceName": "Singapore",
-//         "PopulatedPlaceConfidence": 0,
-//         "PostCodeName": "247964",
-//         "UtcOffset": 8,
-//         "Dma": 0
-//       }
-//     ],
-//     "userIpAddress": "3.0.182.153",
-//     "timestamp": "2024-03-13T22:22:32+08:00",
-//     "imageUrl": "https://www.bing.com/images/blob?bcid=SyFg6tPUqsgGPhHXWqKXm9rs7iVN.....7g",
-//     "originalImageUrl": "https://www.bing.com/images/blob?bcid=SyFg6tPUqsgGPhHXWqKXm9rs7iVN.....7g",
-//     "author": "user",
-//     "inputMethod": "Keyboard",
-//     "text": "这是什么",
-//     "messageType": "Chat",
-//     "requestId": "0ef34dae-a965-0797-a42d-f01a4063da47",
-//     "messageId": "0ef34dae-a965-0797-a42d-f01a4063da47"
-//   },
 
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(non_snake_case)]
@@ -575,7 +586,7 @@ impl UserInput {
                 chat,
                 client,
             )],
-            invocationId: 6.to_string(),
+            invocationId: 0.to_string(),
             target: "chat".to_string(),
             r#type: 4,
         })
