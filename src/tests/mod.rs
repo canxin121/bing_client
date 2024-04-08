@@ -1,14 +1,13 @@
 #[cfg(test)]
 mod test {
 
-    use std::time::Duration;
 
     use genawaiter::GeneratorState;
-    use tokio::{io::AsyncWriteExt, time::sleep};
+    use tokio::io::AsyncWriteExt;
 
     use crate::{
         client::BingClient,
-        types::{cookie_type::Cookie, plugin_type::Plugin, user_input_type::UserInput},
+        types::{cookie_type::Cookie, plugin_type::Plugin, user_input_type::UserInput}, Image,
     };
 
     #[tokio::test]
@@ -55,8 +54,8 @@ mod test {
             BingClient::build_with_chats(&Cookie::JsonPath("_data/cookie.json".to_string()))
                 .await
                 .unwrap();
-        let mut last_chat = client.chats.last().unwrap().clone();
-        match client.delete_chat(&mut last_chat).await {
+        let last_chat = client.chats.last().unwrap().clone();
+        match client.delete_chat(& last_chat).await {
             Ok(_) => {
                 println!("删除成功")
             }
@@ -72,8 +71,8 @@ mod test {
             BingClient::build_with_chats(&Cookie::JsonPath("_data/cookie.json".to_string()))
                 .await
                 .unwrap();
-        let mut last_chat = client.chats.last().unwrap().clone();
-        match client.delete_chats(crate::TodelChats::Chats(vec![&mut last_chat])).await {
+        let last_chat = client.chats.last().unwrap().clone();
+        match client.delete_chats(crate::TodelChats::Chats(vec![& last_chat])).await {
             Ok(_) => {
                 println!("删除成功")
             }
@@ -91,8 +90,8 @@ mod test {
             .await
             .unwrap();
         println!("{}", client.cookie_str);
-        let mut last_chat = client.chats.first().unwrap().clone();
-        match client.get_chat_messages(&mut last_chat).await {
+        let last_chat = client.chats.first().unwrap().clone();
+        match client.get_chat_messages(& last_chat).await {
             Ok(value) => {
                 println!("成功获取 chat 的messages: {:#?}", value);
                 let mut file = tokio::fs::File::create("./_data/msgs.json").await.unwrap();
@@ -112,9 +111,9 @@ mod test {
             BingClient::build_with_chats(&Cookie::JsonPath("_data/cookie.json".to_string()))
                 .await
                 .unwrap();
-        let mut last_chat = client.chats.first().unwrap().clone();
+        let last_chat = client.chats.first().unwrap().clone();
         client
-            .rename_chat(&mut last_chat, "1234".to_string())
+            .rename_chat(& last_chat, "1234".to_string())
             .await
             .unwrap();
     }
@@ -137,12 +136,12 @@ mod test {
 
     #[tokio::test]
     async fn test_plain_chat() {
-        let client = BingClient::build(&Cookie::HeadPath("_data/cookie".to_string()))
+        let client = BingClient::build(&&Cookie::JsonPath("_data/cookie.json".to_string()))
             .await
             .unwrap();
-        let mut new_chat = client.create_chat().await.unwrap();
+        let new_chat = client.create_chat().await.unwrap();
         let user_input = UserInput::build(
-            "画一只猫".to_string(),
+            "在吗".to_string(),
             // Some(Image::Path(
             //     r"D:\Git\bing_client\_data\{0AF8F716-2078-47e8-8842-01C8EC62D911}.png".to_string(),
             // )),
@@ -156,8 +155,8 @@ mod test {
         )
         .await
         .unwrap();
-        let (mut stream, stop_fn) = client
-            .ask_stream_plain(&mut new_chat, user_input)
+        let (mut stream, _stop_fn) = client
+            .ask_stream_plain(& new_chat, user_input)
             .await
             .unwrap();
         while let GeneratorState::Yielded(data) = stream.async_resume().await {
@@ -170,7 +169,7 @@ mod test {
         let client = BingClient::build(&Cookie::JsonPath("_data/cookie.json".to_string()))
             .await
             .unwrap();
-        let mut new_chat = client.create_chat().await.unwrap();
+        let new_chat = client.create_chat().await.unwrap();
         let user_input = UserInput::build(
             "写一个科幻小说".to_string(),
             // Some(Image::Path(
@@ -187,7 +186,7 @@ mod test {
         .await
         .unwrap();
         let (mut stream, stop_fn) = client
-            .ask_stream_plain(&mut new_chat, user_input)
+            .ask_stream_plain(& new_chat, user_input)
             .await
             .unwrap();
         let mut times = 0;
@@ -220,7 +219,7 @@ mod test {
         )
         .await
         .unwrap();
-        let (mut stream, stop_fn) = client.ask_stream(&mut new_chat, user_input).await.unwrap();
+        let (mut stream, stop_fn) = client.ask_stream(& new_chat, user_input).await.unwrap();
         while let GeneratorState::Yielded(data) = stream.async_resume().await {
             print!("\x1b[2J\x1b[H");
             match data {
@@ -252,8 +251,8 @@ mod test {
                 .unwrap();
         let client_str = serde_json::to_string(&client).unwrap();
         let client = serde_json::from_str::<BingClient>(&client_str).unwrap();
-        let mut last_chat = client.chats.last().unwrap().clone();
+        let last_chat = client.chats.last().unwrap().clone();
         println!("{:?}", last_chat);
-        client.delete_chat(&mut last_chat).await.unwrap();
+        client.delete_chat(& last_chat).await.unwrap();
     }
 }

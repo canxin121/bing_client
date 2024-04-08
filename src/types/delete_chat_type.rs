@@ -65,6 +65,6 @@ pub struct DeleteChatsResp {
 }
 
 pub enum TodelChats<'a> {
-    Chats(Vec<&'a mut Chat>),
+    Chats(Vec<&'a Chat>),
     Ids(Vec<String>),
 }

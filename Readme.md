@@ -85,13 +85,13 @@ let chat = client.create_chat().await.unwrap();
 ## Delete a chat
 
 ```rust
-client.delete_chat(&mut chat).await.unwrap();
+client.delete_chat(& chat).await.unwrap();
 ```
 
 ## Rename a chat
 
 ```rust
-client..rename_chat(&mut chat, "new name".to_string()).await.unwrap();
+client..rename_chat(& chat, "new name".to_string()).await.unwrap();
 ```
 
 ## Get chat messages

@@ -1,3 +1,5 @@
+use std::cell::RefCell;
+
 use serde::{Deserialize, Serialize};
 
 use super::plugin_type::Plugin;
@@ -15,8 +17,8 @@ pub struct Chat {
     #[serde(rename = "updateTimeUtc")]
     pub update_time_utc: Option<u64>,
     pub plugins: Vec<Plugin>,
-    pub x_sydney_conversationsignature: Option<String>,
-    pub x_sydney_encryptedconversationsignature: Option<String>,
+    pub x_sydney_conversationsignature: RefCell<Option<String>>,
+    pub x_sydney_encryptedconversationsignature: RefCell<Option<String>>,
 }
 
 impl std::fmt::Display for Chat {
