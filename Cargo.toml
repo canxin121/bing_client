@@ -1,7 +1,7 @@
 [package]
 name = "bing_client"
 description = "Async reverse client for Bing copilot"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 authors = ["canxin121 <q1969730106@gmail.com>"]
 homepage = "https://github.com/canxin121/bing_client"
