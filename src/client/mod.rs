@@ -1,4 +1,4 @@
-use std::{cell::RefCell, future::Future, str::FromStr};
+use std::{future::Future, str::FromStr};
 
 use futures_util::{future::join_all, SinkExt, StreamExt};
 use genawaiter::{sync::Gen, GeneratorState};
@@ -6,7 +6,7 @@ use http::HeaderValue;
 use reqwest::{header::HeaderMap, multipart, Client as ReqwestClient, StatusCode};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use tokio::task::JoinError;
+use tokio::{sync::RwLock, task::JoinError};
 use tokio_tungstenite::{
     connect_async,
     tungstenite::{client::IntoClientRequest, Message::Text},
@@ -78,8 +78,8 @@ impl BingClient {
                 if let Some(x_sydney_conversationsignature) =
                     resp.headers().get("X-Sydney-Conversationsignature")
                 {
-                    *chat.x_sydney_conversationsignature.borrow_mut() =
-                        Some(x_sydney_conversationsignature.to_str()?.to_string()).into();
+                    {*chat.x_sydney_conversationsignature.write().await =
+                        Some(x_sydney_conversationsignature.to_str()?.to_string()).into();}
                 } else {
                     return Err(anyhow::anyhow!(
                         "Get Bing Copilot Chat X-Sydney-Conversationsignature Failed; No X-Sydney-Conversationsignature in resp headers.",
@@ -89,8 +89,8 @@ impl BingClient {
                 if let Some(x_sydney_encryptedconversationsignature) =
                 resp.headers().get("X-Sydney-Encryptedconversationsignature")
                 {
-                    *chat.x_sydney_encryptedconversationsignature.borrow_mut() =
-                        Some(x_sydney_encryptedconversationsignature.to_str()?.to_string()).into();
+                    {*chat.x_sydney_encryptedconversationsignature.write().await =
+                        Some(x_sydney_encryptedconversationsignature.to_str()?.to_string()).into();}
                     Ok(())
                 } else {
                     Err(anyhow::anyhow!(
@@ -193,7 +193,7 @@ impl BingClient {
         }
     }
 
-    pub async fn update_chats_client_id(&mut self) -> Result<Vec<Chat>, anyhow::Error> {
+    pub async fn update_chats_client_id(&mut self) -> Result<(), anyhow::Error> {
         // this fn changes self.chat and self.client_id
         let resp: ChatListResp = self
             .reqwest_client
@@ -204,8 +204,8 @@ impl BingClient {
             .await?;
         if resp.result.value == "Success" {
             self.client_id = resp.client_id;
-            self.chats = resp.chats.clone();
-            Ok(resp.chats)
+            self.chats = resp.chats;
+            Ok(())
         } else {
             Err(anyhow::anyhow!(
                 "Get Bing Copilot Chat List Failed; Error Value {}; Error Message {}",
@@ -263,8 +263,8 @@ impl BingClient {
                     create_time_utc: None,
                     update_time_utc:None,
                     plugins: Vec::new(),
-                    x_sydney_conversationsignature:RefCell::new(x_sydney_conversationsignature),
-                    x_sydney_encryptedconversationsignature:RefCell::new(x_sydney_encryptedconversationsignature), };
+                    x_sydney_conversationsignature:RwLock::new(x_sydney_conversationsignature),
+                    x_sydney_encryptedconversationsignature:RwLock::new(x_sydney_encryptedconversationsignature), };
                 Ok(new_chat)
             }
             _ => Err(anyhow::anyhow!(
@@ -276,7 +276,7 @@ impl BingClient {
     }
 
     pub async fn delete_chat(&self, chat: & Chat) -> Result<(), anyhow::Error> {
-        if chat.x_sydney_conversationsignature.borrow().is_none() {
+        if chat.x_sydney_conversationsignature.read().await.is_none() {
             self.update_chat_signature(chat).await?;
         }
         let mut headers = self.gen_header()?;
@@ -284,7 +284,7 @@ impl BingClient {
             "Authorization",
             reqwest::header::HeaderValue::from_str(&format!(
                 "Bearer {}",
-                chat.x_sydney_conversationsignature.borrow().clone().unwrap()
+                chat.x_sydney_conversationsignature.read().await.clone().unwrap()
             ))?,
         );
         let request = self
@@ -333,7 +333,7 @@ impl BingClient {
     }
 
     pub async fn rename_chat(&self, chat: & Chat, new_name:String) -> Result<(), anyhow::Error> {
-        if chat.x_sydney_conversationsignature.borrow().is_none() {
+        if chat.x_sydney_conversationsignature.read().await.is_none() {
             self.update_chat_signature(chat).await?;
         }
         let mut headers = self.gen_header()?;
@@ -341,7 +341,7 @@ impl BingClient {
             "Authorization",
             reqwest::header::HeaderValue::from_str(&format!(
                 "Bearer {}",
-                chat.x_sydney_conversationsignature.borrow().clone().unwrap()
+                chat.x_sydney_conversationsignature.read().await.clone().unwrap()
             ))?,
         );
         let request = self
@@ -363,7 +363,7 @@ impl BingClient {
         }
     }
     pub async fn get_chat_messages(&self, chat: & Chat) -> Result<Vec<EasyMsg>, anyhow::Error> {
-        if chat.x_sydney_conversationsignature.borrow().is_none() {
+        if chat.x_sydney_conversationsignature.read().await.is_none() {
             self.update_chat_signature(chat).await?;
         }
         let mut headers = self.gen_header()?;
@@ -371,7 +371,7 @@ impl BingClient {
             "Authorization",
             reqwest::header::HeaderValue::from_str(&format!(
                 "Bearer {}",
-                chat.x_sydney_conversationsignature.borrow().clone().unwrap()
+                chat.x_sydney_conversationsignature.read().await.clone().unwrap()
             ))?,
         );
         let resp: Value = self
@@ -469,10 +469,10 @@ impl BingClient {
         chat: &'a Chat,
         user_input: UserInput,
     ) -> Result<(Gen<BotResp, (), impl Future<Output = ()> + 'a>,impl Fn()), anyhow::Error> {
-        if  chat.x_sydney_encryptedconversationsignature.borrow().is_none() {
+        if  chat.x_sydney_encryptedconversationsignature.read().await.is_none() {
             self.update_chat_signature(chat).await?
         }
-        let url = gen_chat_hub_wss_url(chat.x_sydney_encryptedconversationsignature.borrow().as_ref().unwrap());
+        let url = gen_chat_hub_wss_url(chat.x_sydney_encryptedconversationsignature.read().await.as_ref().unwrap());
 
         let mut request = url.into_client_request()?;
         request.headers_mut().insert(

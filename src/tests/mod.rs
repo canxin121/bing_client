@@ -7,7 +7,7 @@ mod test {
 
     use crate::{
         client::BingClient,
-        types::{cookie_type::Cookie, plugin_type::Plugin, user_input_type::UserInput}, Image,
+        types::{cookie_type::Cookie, plugin_type::Plugin, user_input_type::UserInput},
     };
 
     #[tokio::test]
@@ -54,7 +54,7 @@ mod test {
             BingClient::build_with_chats(&Cookie::JsonPath("_data/cookie.json".to_string()))
                 .await
                 .unwrap();
-        let last_chat = client.chats.last().unwrap().clone();
+        let last_chat = client.chats.last().unwrap();
         match client.delete_chat(& last_chat).await {
             Ok(_) => {
                 println!("删除成功")
@@ -71,7 +71,7 @@ mod test {
             BingClient::build_with_chats(&Cookie::JsonPath("_data/cookie.json".to_string()))
                 .await
                 .unwrap();
-        let last_chat = client.chats.last().unwrap().clone();
+        let last_chat = client.chats.last().unwrap();
         match client.delete_chats(crate::TodelChats::Chats(vec![& last_chat])).await {
             Ok(_) => {
                 println!("删除成功")
@@ -90,7 +90,7 @@ mod test {
             .await
             .unwrap();
         println!("{}", client.cookie_str);
-        let last_chat = client.chats.first().unwrap().clone();
+        let last_chat = client.chats.first().unwrap();
         match client.get_chat_messages(& last_chat).await {
             Ok(value) => {
                 println!("成功获取 chat 的messages: {:#?}", value);
@@ -111,7 +111,7 @@ mod test {
             BingClient::build_with_chats(&Cookie::JsonPath("_data/cookie.json".to_string()))
                 .await
                 .unwrap();
-        let last_chat = client.chats.first().unwrap().clone();
+        let last_chat = client.chats.first().unwrap();
         client
             .rename_chat(& last_chat, "1234".to_string())
             .await
@@ -251,7 +251,7 @@ mod test {
                 .unwrap();
         let client_str = serde_json::to_string(&client).unwrap();
         let client = serde_json::from_str::<BingClient>(&client_str).unwrap();
-        let last_chat = client.chats.last().unwrap().clone();
+        let last_chat = client.chats.last().unwrap();
         println!("{:?}", last_chat);
         client.delete_chat(& last_chat).await.unwrap();
     }

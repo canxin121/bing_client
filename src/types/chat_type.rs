@@ -1,9 +1,10 @@
-use std::cell::RefCell;
+
 
 use serde::{Deserialize, Serialize};
+use tokio::sync::RwLock;
 
 use super::plugin_type::Plugin;
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Chat {
     #[serde(rename = "conversationId")]
     pub conversation_id: String,
@@ -17,8 +18,35 @@ pub struct Chat {
     #[serde(rename = "updateTimeUtc")]
     pub update_time_utc: Option<u64>,
     pub plugins: Vec<Plugin>,
-    pub x_sydney_conversationsignature: RefCell<Option<String>>,
-    pub x_sydney_encryptedconversationsignature: RefCell<Option<String>>,
+    #[serde(skip)]
+    pub x_sydney_conversationsignature: RwLock<Option<String>>,
+    #[serde(skip)]
+    pub x_sydney_encryptedconversationsignature: RwLock<Option<String>>,
+}
+
+impl Chat {
+    pub async fn clone(&self) -> Self {
+        let (x1, x2) = {
+            (
+                self.x_sydney_conversationsignature.read().await.clone(),
+                self.x_sydney_encryptedconversationsignature
+                    .read()
+                    .await
+                    .clone(),
+            )
+        };
+        Self {
+            conversation_id: self.conversation_id.clone(),
+            chat_name: self.chat_name.clone(),
+            conversation_signature: self.conversation_signature.clone(),
+            tone: self.tone.clone(),
+            create_time_utc: self.create_time_utc.clone(),
+            update_time_utc: self.update_time_utc.clone(),
+            plugins: self.plugins.clone(),
+            x_sydney_conversationsignature: x1.into(),
+            x_sydney_encryptedconversationsignature: x2.into(),
+        }
+    }
 }
 
 impl std::fmt::Display for Chat {
