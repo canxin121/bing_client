@@ -44,7 +44,7 @@ impl Arguments {
     ) -> Arguments {
         Arguments {
             source: "cib".to_string(),
-            optionsSets: OptionsSets::from_tone(&tone),
+            optionsSets: OptionsSets::from_tone(&tone, &plugins),
             allowedMessageTypes: AllowedMessageTypes::from_tone(&tone),
             sliceIds: SliceIds::from_tone(&tone),
             verbosity: "verbose".to_string(),
@@ -73,11 +73,11 @@ impl Arguments {
 }
 
 impl OptionsSets {
-    fn from_tone(tone: &Tone) -> Self {
+    fn from_tone(tone: &Tone, plugins: &Vec<Plugin>) -> Self {
         match tone {
-            Tone::Creative => Self::creative(),
-            Tone::Balanced => Self::balanced(),
-            Tone::Precise => Self::precise(),
+            Tone::Creative => Self::creative(plugins),
+            Tone::Balanced => Self::balanced(plugins),
+            Tone::Precise => Self::precise(plugins),
         }
     }
 }
@@ -87,8 +87,29 @@ impl OptionsSets {
 pub struct OptionsSets(pub Vec<String>);
 
 impl OptionsSets {
-    pub fn creative() -> OptionsSets {
-        OptionsSets(vec_string![
+    pub fn post_process(&mut self, plugins: &Vec<Plugin>) {
+        let mut has_edgestore = false;
+        for plugin in plugins {
+            if plugin.id == Plugin::search().id {
+                self.0.retain(|s| s != "nosearchall");
+            } else if !has_edgestore
+                & (plugin.id == Plugin::instacart().id
+                    || plugin.id == Plugin::kayak().id
+                    || plugin.id == Plugin::klarna().id
+                    || plugin.id == Plugin::open_table().id
+                    || plugin.id == Plugin::shop().id)
+            {
+                has_edgestore = true
+            } else if plugin.id == Plugin::suno().id {
+                self.0.push("014CB21D".to_string());
+            }
+        }
+        if has_edgestore {
+            self.0.append(&mut vec_string!["edgestore", "B3FF9F21"])
+        }
+    }
+    pub fn creative(plugins: &Vec<Plugin>) -> OptionsSets {
+        let mut basic = OptionsSets(vec_string![
             "nlu_direct_response_filter",
             "deepleo",
             "disable_emoji_spoken_text",
@@ -112,10 +133,12 @@ impl OptionsSets {
             "ldqa",
             "sdretrieval",
             "nosearchall"
-        ])
+        ]);
+        basic.post_process(plugins);
+        basic
     }
-    pub fn balanced() -> OptionsSets {
-        OptionsSets(vec_string![
+    pub fn balanced(plugins: &Vec<Plugin>) -> OptionsSets {
+        let mut basic = OptionsSets(vec_string![
             "nlu_direct_response_filter",
             "deepleo",
             "disable_emoji_spoken_text",
@@ -138,10 +161,12 @@ impl OptionsSets {
             "ldqa",
             "sdretrieval",
             "nosearchall"
-        ])
+        ]);
+        basic.post_process(plugins);
+        basic
     }
-    pub fn precise() -> OptionsSets {
-        OptionsSets(vec_string![
+    pub fn precise(plugins: &Vec<Plugin>) -> OptionsSets {
+        let mut basic = OptionsSets(vec_string![
             "nlu_direct_response_filter",
             "deepleo",
             "disable_emoji_spoken_text",
@@ -165,7 +190,9 @@ impl OptionsSets {
             "sdretrieval",
             "clgalileo",
             "nosearchall"
-        ])
+        ]);
+        basic.post_process(plugins);
+        basic
     }
 }
 

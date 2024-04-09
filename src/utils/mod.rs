@@ -5,3 +5,4 @@ pub mod process_bot_resp;
 pub mod draw_image;
 pub mod process_chat_msgs;
 pub mod stop_signal;
+pub mod suno;

@@ -139,17 +139,20 @@ mod test {
         let client = BingClient::build_with_chats(&&Cookie::JsonPath("_data/cookie.json".to_string()))
             .await
             .unwrap();
-        let chat = client.chats.last().unwrap();
-        // let chat = client.create_chat().await.unwrap();
+        // let chat =  client.chats.iter().find(|chat|{
+        //     chat.chat_name.as_ref().unwrap().contains("绘制猫咪")
+        // }).unwrap();
+        // let chat = client.chats.last().unwrap();
+        let chat = client.create_chat().await.unwrap();
         let user_input = UserInput::build(
-            "写一个科幻小说".to_string(),
+            "画一只猫".to_string(),
             // Some(Image::Path(
             //     r"D:\Git\bing_client\_data\{0AF8F716-2078-47e8-8842-01C8EC62D911}.png".to_string(),
             // )),
             None,
             crate::types::user_input_type::Tone::Creative,
             vec![
-            // Plugin::search()
+            Plugin::search()
             ],
             &chat,
             &client,
@@ -263,8 +266,12 @@ mod test {
             BingClient::build_with_chats(&Cookie::JsonPath("_data/cookie.json".to_string()))
                 .await
                 .unwrap();
+        // let chat =  client.chats.iter().find(|chat|{
+        //     chat.chat_name.as_ref().unwrap().contains("绘制猫咪")
+        // }).unwrap();
+        // println!("{}",chat);
         let chat = client.create_chat().await.unwrap();
-        let userinput = UserInput::build("在吗".to_string(), None, crate::Tone::Creative, vec![], &chat, &client).await.unwrap();
+        let userinput = UserInput::build("在吗".to_string(), None, crate::Tone::Creative, vec![Plugin::search(),Plugin::suno()], &chat, &client).await.unwrap();
         let json = serde_json::to_string(&userinput).unwrap();
         println!("{}",json);
     }

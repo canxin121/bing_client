@@ -97,23 +97,30 @@ fn process_text_msg(
     }
 
     match message.get("messageType").and_then(|v| v.as_str()) {
-        Some("GenerateContentQuery") => {
-            let prompt = text.to_owned();
-            tasks.push(tokio::spawn(async move {
-                let images = draw_image(&prompt, reqwest_headers).await;
-                match images {
-                    Ok(images) => {
-                        return BotResp::Image(images);
+        Some("GenerateContentQuery") => match message.get("contentType").and_then(|v| v.as_str()) {
+            Some("IMAGE") => {
+                let prompt = text.to_owned();
+                tasks.push(tokio::spawn(async move {
+                    let images = draw_image(&prompt, reqwest_headers).await;
+                    match images {
+                        Ok(images) => {
+                            return BotResp::Image(images);
+                        }
+                        Err(e) => {
+                            return BotResp::Apology(format!(
+                                "Bing Copilot Draw Image Failed; Error Message: {}",
+                                e
+                            ));
+                        }
                     }
-                    Err(e) => {
-                        return BotResp::Apology(format!(
-                            "Bing Copilot Draw Image Failed; Error Message: {}",
-                            e
-                        ));
-                    }
-                }
-            }));
-        }
+                }));
+            }
+            Some("SUNO") => {
+                // todo
+                // println!("{:?}", message);
+            }
+            _ => {}
+        },
         Some("InternalLoaderMessage") => bot_resps.push(BotResp::Notice(text.to_owned())),
         Some("InternalSearchResult") => {}
         Some(_) => {}

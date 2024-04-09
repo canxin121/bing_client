@@ -36,6 +36,18 @@ pub fn gen_draw_image_url(prompt: &str) -> String {
     format!("https://www.bing.com/images/create?partner=sydney&re=1&showselective=1&sude=1&kseed=8000&SFX=3&q={}&iframeid={}&rt=3",encode(&prompt),Uuid::new_v4().to_string())
 }
 
+pub fn gen_suno_url(request_id: &str) -> String {
+    format!(
+        "https://www.bing.com/videos/music?vdpp=suno&kseed=7500&SFX=2&q=&iframeid={}&requestid={}",
+        Uuid::new_v4().to_string(),
+        request_id
+    )
+}
+
+pub fn gen_get_suno_url(request_id: &str) -> String {
+    format!("https://www.bing.com/videos/api/custom/music?skey=TmUD-Vs_uyv92Y_rBoRZ0lftFoFeYkDqF_6JTN33304&safesearch=Moderate&vdpp=suno&requestid={}&ig=D51BB25CF62E48EE94182816007E1DD1&iid=vsn&sfx=1",request_id)
+}
+
 pub fn gen_get_images_url(request_id: &str) -> String {
     format!(
         "https://www.bing.com/images/create/async/results/{}?showselective=1&partner=sydney&FORM=SYDBIC",
