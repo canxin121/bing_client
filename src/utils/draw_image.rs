@@ -134,7 +134,7 @@ pub fn gen_update_draw_conversation(message_id: &str, prompt: &str, persistent_u
       "messageType": "GenerateContentQuery",
       "offense": "None",
       "requestId": "97a9034e-2c6c-b97f-b71b-6b9e233966fa",
-      "text": "一只猫",
+      "text": prompt,
       "timestamp": time,
       "responseType": 0,
       "genStream": false,
