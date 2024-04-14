@@ -1,13 +1,16 @@
-use serde_json::Value;
+use serde_json::{json, Value};
 
-use crate::types::bot_easy_resp_type::{BotResp, Image, Limit, SourceAttribution};
+use crate::{
+    types::bot_easy_resp_type::{BotResp, Image, Limit, SourceAttribution},
+    BingClient,
+};
 
-use super::draw_image::draw_image;
+use super::draw_image::{gen_pool_image_url, gen_update_draw_conversation, poll_images};
 
 pub(crate) fn json2bot_resp_type1(
     json: &Value,
-    tasks_handle: &mut Vec<tokio::task::JoinHandle<BotResp>>,
-    reqwest_headers: reqwest::header::HeaderMap,
+    tasks_handle: &mut Vec<tokio::task::JoinHandle<(BotResp, Value)>>,
+    client: &BingClient,
 ) -> Vec<BotResp> {
     let mut bot_resps: Vec<BotResp> = Vec::new();
     if let Value::Array(args) = json["arguments"].to_owned() {
@@ -15,13 +18,8 @@ pub(crate) fn json2bot_resp_type1(
             if let Value::Array(messages) = arg["messages"].to_owned() {
                 for message in messages {
                     if let Value::String(text) = &message["text"] {
-                        let _ = process_text_msg(
-                            text,
-                            &message,
-                            &mut bot_resps,
-                            tasks_handle,
-                            reqwest_headers.to_owned(),
-                        );
+                        let _ =
+                            process_text_msg(text, &message, &mut bot_resps, tasks_handle, client);
                     }
                 }
             }
@@ -86,38 +84,60 @@ fn process_text_msg(
     text: &str,
     message: &Value,
     bot_resps: &mut Vec<BotResp>,
-    tasks: &mut Vec<tokio::task::JoinHandle<BotResp>>,
-    reqwest_headers: reqwest::header::HeaderMap,
-) -> Result<(), String> {
+    botresp_tasks: &mut Vec<tokio::task::JoinHandle<(BotResp, Value)>>,
+    client: &BingClient,
+) -> Result<(), anyhow::Error> {
     if let Some(content_origin) = message["contentOrigin"].as_str() {
         if content_origin == "Apology" {
             bot_resps.push(BotResp::Apology(text.to_owned()));
             return Ok(());
         }
     }
-
+    let message_id;
+    if let Some(Value::String(id)) = message.get("messageId") {
+        message_id = id.clone()
+    } else {
+        return Ok(());
+    }
     match message.get("messageType").and_then(|v| v.as_str()) {
         Some("GenerateContentQuery") => match message.get("contentType").and_then(|v| v.as_str()) {
             Some("IMAGE") => {
                 let prompt = text.to_owned();
-                tasks.push(tokio::spawn(async move {
-                    let images = draw_image(&prompt, reqwest_headers).await;
-                    match images {
-                        Ok(images) => {
-                            return BotResp::Image(images);
-                        }
+                let headers = client.gen_header()?;
+
+                botresp_tasks.push(tokio::spawn(async move {
+                    match gen_pool_image_url(&prompt, headers.clone(), &message_id).await {
+                        Ok(url) => match poll_images(url.clone(), headers, true).await {
+                            Ok(imgs) => {
+                                let resps = BotResp::Image(imgs);
+                                (
+                                    resps,
+                                    gen_update_draw_conversation(&message_id, &prompt, &url),
+                                )
+                            }
+                            Err(e) => {
+                                return (
+                                    BotResp::Apology(format!(
+                                        "Bing Copilot Draw Image Failed; Error Message: {}",
+                                        e
+                                    )),
+                                    json!({}),
+                                )
+                            }
+                        },
                         Err(e) => {
-                            return BotResp::Apology(format!(
-                                "Bing Copilot Draw Image Failed; Error Message: {}",
-                                e
-                            ));
+                            return (
+                                BotResp::Apology(format!(
+                                    "Bing Copilot Draw Image Failed; Error Message: {e}",
+                                )),
+                                json!({}),
+                            );
                         }
                     }
                 }));
             }
             Some("SUNO") => {
                 // todo
-                // println!("{:?}", message);
             }
             _ => {}
         },

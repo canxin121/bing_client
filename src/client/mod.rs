@@ -4,27 +4,24 @@ use futures_util::{future::join_all, SinkExt, StreamExt};
 use genawaiter::{sync::Gen, GeneratorState};
 use http::HeaderValue;
 use reqwest::{header::HeaderMap, multipart, Client as ReqwestClient, StatusCode};
-use serde::{Deserialize, Serialize};
+use serde::{ Deserialize, Serialize};
 use serde_json::{json, Value};
 use tokio::{sync::RwLock, task::JoinError};
 use tokio_tungstenite::{
     connect_async,
     tungstenite::{client::IntoClientRequest, Message::Text},
 };
+use uuid::Uuid;
 
 use crate::{
     const_vars::{
-        gen_chat_hub_wss_url, gen_get_chat_messages_url, gen_get_chat_signature_url, gen_image_payload_url, CREATE_CHAT_URL, DELETE_CHATS_URL, DELETE_CHAT_URL, GEN_IMAGE_ID_URL, GET_CHAT_ID_URL, GET_CHAT_LIST_URL, RENAME_CHAT_URL
+        gen_chat_hub_wss_url, gen_get_chat_messages_url, gen_get_chat_signature_url, gen_image_payload_url, CREATE_CHAT_URL, DELETE_CHATS_URL, DELETE_CHAT_URL, GEN_IMAGE_ID_URL, GET_CHAT_ID_URL, GET_CHAT_LIST_URL, RENAME_CHAT_URL, UPDATE_CONVERSATION_URL
     },
     types::{
-        bot_easy_resp_type::BotResp, chat_msg_type::EasyMsg, chat_type::{Chat, ChatListResp}, client_info_type::GetClientInfoResponse, cookie_type::Cookie, create_chat_type::CreateChatChatResp, delete_chat_type::{DeleteChatPayload, DeleteChatResp, DeleteChatsPayload, DeleteChatsResp, TodelChats}, rename_chat_type::{RenameChatRequest, RenameChatResp}, user_input_type::UserInput
+        bot_easy_resp_type::BotResp, chat_msg_type::EasyMsg, chat_type::{Chat, ChatListResp}, client_info_type::GetClientInfoResponse, cookie_type::Cookie, create_chat_type::CreateChatChatResp, delete_chat_type::{DeleteChatPayload, DeleteChatResp, DeleteChatsPayload, DeleteChatsResp, TodelChats}, rename_chat_type::{RenameChatRequest, RenameChatResp}, update_conversation::UpdateConversaionResp, user_input_type::UserInput
     },
     utils::{
-        cookie_pre::parse_cookie,
-        draw_image::draw_image,
-        image_base64::Image,
-        msg_proces::add_suffix,
-        process_bot_resp::{json2bot_resp_type1, json2bot_resp_type2}, process_chat_msgs::process_chat_msgs, stop_signal::StopSignal,
+        cookie_pre::parse_cookie, draw_image::{gen_pool_image_url, poll_images}, image_base64::Image, msg_proces::add_suffix, process_bot_resp::{json2bot_resp_type1, json2bot_resp_type2}, process_chat_msgs::process_chat_msgs, stop_signal::StopSignal
     },
 };
 
@@ -41,7 +38,7 @@ pub struct BingClient {
 }
 
 impl BingClient {
-    fn gen_header(&self) -> Result<HeaderMap, anyhow::Error> {
+    pub(crate) fn gen_header(&self) -> Result<HeaderMap, anyhow::Error> {
         let mut headers = HeaderMap::new();
         headers.insert(reqwest::header::COOKIE, self.cookie_str.parse()?);
         headers.insert(
@@ -362,6 +359,52 @@ impl BingClient {
             ))
         }
     }
+    pub async fn update_conversation(&self,chat:&Chat,new_message:Value)->Result<(),anyhow::Error>{
+        if chat.x_sydney_conversationsignature.read().await.is_none() {
+            self.update_chat_signature(chat).await?;
+        };
+        let mut headers = self.gen_header()?;
+        headers.insert(
+            "Authorization",
+            reqwest::header::HeaderValue::from_str(&format!(
+                "Bearer {}",
+                chat.x_sydney_conversationsignature.read().await.clone().unwrap()
+            ))?,
+        );
+        let payload = json!({
+            "messages": [
+                new_message
+            ],
+            "conversationId": chat.conversation_id,
+            "source": "cib",
+            "traceId": uuid::Uuid::new_v4().to_string(),
+            "participant": {
+              "id": self.client_id
+            },
+            "optionsSets": ["autosave", "savemem", "uprofupd", "uprofgen"]
+          }
+          );
+
+        let resp: UpdateConversaionResp = self
+            .reqwest_client
+            .post(UPDATE_CONVERSATION_URL)
+            .headers(   
+                headers
+            ).json(&payload)
+            .send()
+            .await?
+            .json()
+            .await?;
+        if resp.result.value == "Success" {
+            Ok(())
+        } else {
+            Err(anyhow::anyhow!(
+                "Bing Copilot Update Chat Message Error; Error Value: {}; Error Message: {:?}",
+                resp.result.value,
+                resp.result.message
+            ))
+        }
+    }
     pub async fn get_chat_messages(&self, chat: & Chat) -> Result<Vec<EasyMsg>, anyhow::Error> {
         if chat.x_sydney_conversationsignature.read().await.is_none() {
             self.update_chat_signature(chat).await?;
@@ -380,10 +423,6 @@ impl BingClient {
                 &chat.conversation_id,
                 &self.client_id,
             ))
-            .json(&DeleteChatPayload::build(
-                &self.client_id,
-                &chat.conversation_id,
-            ))
             .headers(
                 headers
             )
@@ -398,7 +437,9 @@ impl BingClient {
         &self,
         prompt: &str,
     ) -> Result<Vec<crate::types::bot_easy_resp_type::Image>, anyhow::Error> {
-        draw_image(prompt, self.gen_header()?).await
+        let url = gen_pool_image_url(prompt, self.gen_header()?,&Uuid::new_v4().to_string()).await?;
+        let headers = self.gen_header()?;
+        poll_images(url,headers,true).await
     }
 
     pub async fn ask_stream_plain<'a>(
@@ -412,6 +453,7 @@ impl BingClient {
         let mut sources:Vec<crate::types::bot_easy_resp_type::SourceAttribution> = Vec::new();
         let mut limit_text = Vec::new();
         let mut plain_text = String::new();
+        let mut apology_text = String::new();
         let chat_gen = Gen::new(|co| async move {
             while let GeneratorState::Yielded(data) = stream.async_resume().await {
                 match data {
@@ -428,8 +470,11 @@ impl BingClient {
                     crate::types::bot_easy_resp_type::BotResp::SourceAttribution(mut source_vec) => {
                         sources.append(&mut source_vec);
                     }
-                    crate::types::bot_easy_resp_type::BotResp::Limit(text) => {
-                        limit_text.push(text);
+                    crate::types::bot_easy_resp_type::BotResp::Limit(limit) => {
+                        limit_text.push(limit);
+                    }
+                    crate::types::bot_easy_resp_type::BotResp::Apology(error) => {
+                        apology_text += &(error + "\n");
                     }
                     _ => {}
                 }
@@ -440,6 +485,10 @@ impl BingClient {
                 for (index, image) in images.iter().enumerate() {
                     result += &format!("{}. {}\n", index + 1, image);
                 }
+            }
+            if !apology_text.is_empty(){
+                result += "\nApology: \n\n";
+                result += &apology_text;
             }
             if !sources.is_empty() {
                 result += "\nSources:\n\n";
@@ -498,7 +547,7 @@ impl BingClient {
             .await?;
 
         let chat_gen = Gen::new(|co| async move {
-            let mut tasks_handle: Vec<tokio::task::JoinHandle<BotResp>> = Vec::new();
+            let mut botresp_tasks_handle: Vec<tokio::task::JoinHandle<(BotResp,Value)>> = Vec::new();
             let mut shutdown = false;
             while let Some(ws_msg_rst) = read.next().await {
                 if signal.check_stop(){
@@ -521,8 +570,8 @@ impl BingClient {
                                                 1 => {
                                                     for botresp in json2bot_resp_type1(
                                                         &json,
-                                                        &mut tasks_handle,
-                                                        self.gen_header().unwrap(),
+                                                        &mut botresp_tasks_handle,
+                                                        &self,
                                                     ) {
                                                         co.yield_(botresp).await;
                                                     }
@@ -575,14 +624,20 @@ impl BingClient {
                     },
                 }
             }
-            let resp_results:Vec<Result<BotResp, JoinError>>= join_all(tasks_handle).await;
+            let resp_results:Vec<Result<(BotResp,Value), JoinError>>= join_all(botresp_tasks_handle).await;
             for resp_result in resp_results{
                 match resp_result  {
-                    Ok(resp) => {
+                    Ok((resp,payload)) => {
                         co.yield_(resp).await;
+                        match self.update_conversation(chat, payload).await{
+                            Ok(())=>{},
+                            Err(e)=>{
+                                co.yield_(BotResp::Apology(format!("Failed to update conversation: {e}"))).await;
+                            }
+                        }
                     },
                     Err(e) => {
-                        co.yield_(BotResp::Apology(format!("Bing Copilot Draw Image Join Failed; Error Message: {}",e))).await;
+                        co.yield_(BotResp::Apology(format!("{}",e))).await;
                     },
                 }
             }

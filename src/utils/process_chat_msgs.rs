@@ -6,7 +6,7 @@ use crate::{
 };
 
 use super::{
-    draw_image::extract_image_links,
+    draw_image::poll_images,
     process_bot_resp::{process_source_msg, process_suggested_responses},
 };
 
@@ -65,36 +65,22 @@ pub async fn process_chat_msgs(
                         if let Value::Array(c) = &b["body"] {
                             for d in c {
                                 if let Value::String(url) = &d["persistentUrl"] {
-                                    match client.reqwest_client.get(url).send().await {
-                                        Ok(resp) => match resp.text().await {
-                                            Ok(html) => {
-                                                if let Some(images) = extract_image_links(html) {
-                                                    for (index, image) in images.iter().enumerate()
-                                                    {
-                                                        images_rst.push(Image {
-                                                            url: image.to_string(),
-                                                            name: format!(
-                                                                "bing_image_{}.jpg",
-                                                                index + 1
-                                                            ),
-                                                        });
-                                                    }
-                                                }
-                                            }
-                                            Err(e) => {
-                                                return Err(anyhow::anyhow!(
-                                                    "Failed to get text from response: {}",
-                                                    e
-                                                ))
-                                            }
-                                        },
-                                        Err(e) => {
-                                            return Err(anyhow::anyhow!(
-                                                "Failed to send request: {}",
-                                                e
-                                            ))
-                                        }
-                                    };
+                                    match poll_images(
+                                        url.to_string(),
+                                        client.gen_header().unwrap(),
+                                        false,
+                                    )
+                                    .await
+                                    {
+                                        Ok(images) => images_rst = images,
+                                        Err(e) => easy_msgs.push(EasyMsg {
+                                            author: author.to_owned(),
+                                            text: e.to_string(),
+                                            images: Vec::with_capacity(0),
+                                            sources: Vec::with_capacity(0),
+                                            suggest_replys: Vec::with_capacity(0),
+                                        }),
+                                    }
                                 }
                             }
                         }

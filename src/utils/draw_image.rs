@@ -1,20 +1,29 @@
 use std::time::Duration;
 
-use reqwest::{header::HeaderMap, redirect::Policy};
+use chrono::{DateTime, Utc};
+use reqwest::{
+    header::{HeaderMap, CONTENT_SECURITY_POLICY},
+    redirect::Policy,
+};
+use serde_json::{json, Value};
 use tokio::time::sleep;
 
-use crate::const_vars::{gen_draw_image_url, gen_get_images_url};
+use crate::{
+    const_vars::{gen_draw_image_url, gen_get_images_url},
+    types::bot_easy_resp_type::Image,
+};
 
-pub async fn draw_image(
+pub async fn gen_pool_image_url(
     prompt: &str,
     reqwest_header: HeaderMap,
-) -> Result<Vec<crate::types::bot_easy_resp_type::Image>, anyhow::Error> {
+    message_id: &str,
+) -> Result<String, anyhow::Error> {
     let client = reqwest::Client::builder()
         .redirect(Policy::none())
         .build()?;
 
     let response = client
-        .get(gen_draw_image_url(prompt))
+        .get(gen_draw_image_url(prompt, &message_id))
         .headers(reqwest_header.clone())
         .send()
         .await?;
@@ -41,8 +50,21 @@ pub async fn draw_image(
         .last()
         .ok_or(anyhow::anyhow!("Drawing Failed: Invalid location header"))?;
     request_id = &request_id.split('&').collect::<Vec<&str>>()[0];
-    let polling_url = gen_get_images_url(request_id);
-    let mut times = 100;
+    Ok(gen_get_images_url(request_id))
+}
+
+pub async fn poll_images(
+    polling_url: String,
+    reqwest_header: HeaderMap,
+    wait_long: bool,
+) -> Result<Vec<Image>, anyhow::Error> {
+    let client = reqwest::Client::builder()
+        .default_headers(reqwest_header)
+        .build()?;
+    let mut times = match wait_long {
+        true => 100,
+        _ => 50,
+    };
     let content = loop {
         times -= 1;
         if times < 0 {
@@ -50,36 +72,19 @@ pub async fn draw_image(
         }
         let response = client
             .get(&polling_url)
-            .headers(reqwest_header.clone())
+            .header(CONTENT_SECURITY_POLICY, "script-src 'none'")
             .send()
             .await?;
         if response.status() != 200 {
             return Err(anyhow::anyhow!("Drawing Failed: Could not get results"));
         }
         let text = response.text().await?;
-        if !text.contains("Pending") && !text.contains("Error") && !text.is_empty() {
+        if text.contains("th.bing.com/th") {
             break text;
         }
         sleep(Duration::from_micros(500)).await;
     };
-
-    if let Some(links) = extract_image_links(content) {
-        let imgs: Vec<crate::types::bot_easy_resp_type::Image> = links
-            .iter()
-            .enumerate()
-            .map(|(index, link)| crate::types::bot_easy_resp_type::Image {
-                name: format!("bing_image_{}.jpg", index + 1),
-                url: link.to_string(),
-            })
-            .collect();
-        Ok(imgs)
-    } else {
-        return Err(anyhow::anyhow!("Drawing Failed: No images are found."));
-    }
-}
-
-pub fn extract_image_links(html: String) -> Option<Vec<String>> {
-    let links = html
+    let links = content
         .split("src=\"")
         .filter_map(|s| {
             if let Some(end) = s.find("\"") {
@@ -97,16 +102,59 @@ pub fn extract_image_links(html: String) -> Option<Vec<String>> {
         })
         .collect::<Vec<String>>();
     if !links.is_empty() {
-        Some(links)
+        let imgs: Vec<crate::types::bot_easy_resp_type::Image> = links
+            .iter()
+            .enumerate()
+            .map(|(index, link)| crate::types::bot_easy_resp_type::Image {
+                name: format!("bing_image_{}.jpg", index + 1),
+                url: link.to_string(),
+            })
+            .collect();
+        Ok(imgs)
     } else {
-        None
+        return Err(anyhow::anyhow!(
+            "Poll Draw Image Failed: No images are found."
+        ));
     }
 }
 
-#[tokio::test]
-async fn test() {
-    let content = reqwest::Client::builder().redirect(Policy::none()).build().unwrap().get("https://www.bing.com/images/create/e78cabe592aa/1-65f5ce54cbd448c4ae6c7a77ca6fc647?showselective=1&partner=sydney&FORM=SYDBIC&q=猫咪&iframeid=8492f7d0-e779-4faa-b1c8-1c24b739d98d").send().await.unwrap().text().await.unwrap();
-    if let Some(links) = extract_image_links(content) {
-        println!("{:?}", links)
+pub fn gen_update_draw_conversation(message_id: &str, prompt: &str, persistent_url: &str) -> Value {
+    let time = {
+        let dt: DateTime<Utc> = Utc::now();
+        format!("{}", dt.to_rfc3339())
+    };
+    json!({
+      "author": "bot",
+      "contentOrigin": "DeepLeo",
+      "contentType": "IMAGE",
+      "createdAt": time,
+      "feedback": { "tag": null, "updatedOn": null, "type": "None" },
+      "invocation": format!("graphic_art(prompt=\"{prompt}\")",),
+      "messageId": message_id,
+      "messageType": "GenerateContentQuery",
+      "offense": "None",
+      "requestId": "97a9034e-2c6c-b97f-b71b-6b9e233966fa",
+      "text": "一只猫",
+      "timestamp": time,
+      "responseType": 0,
+      "genStream": false,
+      "adaptiveCards": [
+        {
+          "type": "AdaptiveCard",
+          "version": "1.0",
+          "body": [
+            {
+              "type": "TextBlock",
+              "persistentUrl": persistent_url,
+              "id": "bic-persistent-url",
+              "iframeid": message_id,
+              "iframeWidth": 475,
+              "iframeHeight": 520,
+              "isVisible": false
+            }
+          ]
+        }
+      ]
     }
+    )
 }

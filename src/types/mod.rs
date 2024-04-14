@@ -10,6 +10,7 @@ pub mod bot_easy_resp_type;
 pub mod chat_msg_type;
 pub mod rename_chat_type;
 pub mod cookie_type;
+pub mod update_conversation;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Result {

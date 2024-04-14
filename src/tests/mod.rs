@@ -89,8 +89,8 @@ mod test {
             BingClient::build_with_chats(&Cookie::JsonPath("_data/cookie.json".to_string()))
             .await
             .unwrap();
-        println!("{}", client.cookie_str);
-        let last_chat = client.chats.first().unwrap();
+        // let last_chat = client.chats.first().unwrap();
+        let last_chat = client.chats.iter().find(|chat|{chat.chat_name.as_ref().unwrap().contains("画")}).unwrap();
         match client.get_chat_messages(& last_chat).await {
             Ok(value) => {
                 println!("成功获取 chat 的messages: {:#?}", value);
@@ -136,7 +136,7 @@ mod test {
 
     #[tokio::test]
     async fn test_plain_chat() {
-        let client = BingClient::build_with_chats(&&Cookie::JsonPath("_data/cookie.json".to_string()))
+        let client = BingClient::build_with_chats(&Cookie::HeadPath("_data/cookie".to_string()))
             .await
             .unwrap();
         // let chat =  client.chats.iter().find(|chat|{
@@ -166,6 +166,8 @@ mod test {
         while let GeneratorState::Yielded(data) = stream.async_resume().await {
             println!("{data}");
         }
+        let msgs = client.get_chat_messages(&chat).await.unwrap();
+        println!("{:#?}",msgs);
     }
 
     #[tokio::test]
