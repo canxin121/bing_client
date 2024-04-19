@@ -4,7 +4,7 @@ use futures_util::{future::join_all, SinkExt, StreamExt};
 use genawaiter::{sync::Gen, GeneratorState};
 use http::HeaderValue;
 use reqwest::{header::HeaderMap, multipart, Client as ReqwestClient, StatusCode};
-use serde::{ Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use tokio::{sync::RwLock, task::JoinError};
 use tokio_tungstenite::{
@@ -15,13 +15,33 @@ use uuid::Uuid;
 
 use crate::{
     const_vars::{
-        gen_chat_hub_wss_url, gen_get_chat_messages_url, gen_get_chat_signature_url, gen_image_payload_url, CREATE_CHAT_URL, DELETE_CHATS_URL, DELETE_CHAT_URL, GEN_IMAGE_ID_URL, GET_CHAT_ID_URL, GET_CHAT_LIST_URL, RENAME_CHAT_URL, UPDATE_CONVERSATION_URL
+        gen_chat_hub_wss_url, gen_get_chat_messages_url, gen_get_chat_signature_url,
+        gen_image_payload_url, CREATE_CHAT_URL, DELETE_CHATS_URL, DELETE_CHAT_URL,
+        GEN_IMAGE_ID_URL, GET_CHAT_ID_URL, GET_CHAT_LIST_URL, RENAME_CHAT_URL,
+        UPDATE_CONVERSATION_URL,
     },
     types::{
-        bot_easy_resp_type::BotResp, chat_msg_type::EasyMsg, chat_type::{Chat, ChatListResp}, client_info_type::GetClientInfoResponse, cookie_type::Cookie, create_chat_type::CreateChatChatResp, delete_chat_type::{DeleteChatPayload, DeleteChatResp, DeleteChatsPayload, DeleteChatsResp, TodelChats}, rename_chat_type::{RenameChatRequest, RenameChatResp}, update_conversation::UpdateConversaionResp, user_input_type::UserInput
+        bot_easy_resp_type::BotResp,
+        chat_msg_type::EasyMsg,
+        chat_type::{Chat, ChatListResp},
+        client_info_type::GetClientInfoResponse,
+        cookie_type::Cookie,
+        create_chat_type::CreateChatChatResp,
+        delete_chat_type::{
+            DeleteChatPayload, DeleteChatResp, DeleteChatsPayload, DeleteChatsResp, TodelChats,
+        },
+        rename_chat_type::{RenameChatRequest, RenameChatResp},
+        update_conversation::UpdateConversaionResp,
+        user_input_type::UserInput,
     },
     utils::{
-        cookie_pre::parse_cookie, draw_image::{gen_pool_image_url, poll_images}, image_base64::Image, msg_proces::add_suffix, process_bot_resp::{json2bot_resp_type1, json2bot_resp_type2}, process_chat_msgs::process_chat_msgs, stop_signal::StopSignal
+        cookie_pre::parse_cookie,
+        draw_image::{gen_pool_image_url, poll_images},
+        image_base64::Image,
+        msg_proces::add_suffix,
+        process_bot_resp::{json2bot_resp_type1, json2bot_resp_type2},
+        process_chat_msgs::process_chat_msgs,
+        stop_signal::StopSignal,
     },
 };
 
@@ -41,21 +61,15 @@ impl BingClient {
     pub(crate) fn gen_header(&self) -> Result<HeaderMap, anyhow::Error> {
         let mut headers = HeaderMap::new();
         headers.insert(reqwest::header::COOKIE, self.cookie_str.parse()?);
-        headers.insert(
-            "Referer",
-            "https://www.bing.com/search?q=Bing+Ai".parse()?,
-        );
+        headers.insert("Referer", "https://www.bing.com/search?q=Bing+Ai".parse()?);
         Ok(headers)
     }
-    
+
     async fn init(cookie: &Cookie) -> Result<BingClient, anyhow::Error> {
         let cookie_string = parse_cookie(cookie).await?;
         let mut headers = HeaderMap::new();
         headers.insert(reqwest::header::COOKIE, cookie_string.parse()?);
-        headers.insert(
-            "Referer",
-            "https://www.bing.com/search?q=Bing+Ai".parse()?,
-        );
+        headers.insert("Referer", "https://www.bing.com/search?q=Bing+Ai".parse()?);
         Ok(BingClient {
             reqwest_client: { ReqwestClient::builder().default_headers(headers).build()? },
             cookie_str: cookie_string,
@@ -63,8 +77,8 @@ impl BingClient {
             chats: Vec::new(),
         })
     }
-    
-    async fn update_chat_signature(&self, chat: & Chat) -> Result<(), anyhow::Error> {
+
+    async fn update_chat_signature(&self, chat: &Chat) -> Result<(), anyhow::Error> {
         let resp = self
             .reqwest_client
             .get(gen_get_chat_signature_url(&chat.conversation_id))
@@ -82,7 +96,7 @@ impl BingClient {
                         "Get Bing Copilot Chat X-Sydney-Conversationsignature Failed; No X-Sydney-Conversationsignature in resp headers.",
                     ))
                 };
-                
+
                 if let Some(x_sydney_encryptedconversationsignature) =
                 resp.headers().get("X-Sydney-Encryptedconversationsignature")
                 {
@@ -102,19 +116,19 @@ impl BingClient {
             )),
         }
     }
-    
+
     pub async fn build(cookie: &Cookie) -> Result<BingClient, anyhow::Error> {
         let mut client = Self::init(cookie).await?;
         client.update_client_id().await?;
         Ok(client)
     }
-    
+
     pub async fn build_with_chats(cookie: &Cookie) -> Result<BingClient, anyhow::Error> {
         let mut client = Self::init(cookie).await?;
         client.update_chats_client_id().await?;
         Ok(client)
     }
-    
+
     pub(crate) async fn gen_upload_image_url(
         &self,
         image: Image,
@@ -168,7 +182,7 @@ impl BingClient {
             )),
         }
     }
-    
+
     pub async fn update_client_id(&mut self) -> Result<(), anyhow::Error> {
         // this fn changes self.chat and self.client_id
         let resp: GetClientInfoResponse = self
@@ -272,7 +286,7 @@ impl BingClient {
         }
     }
 
-    pub async fn delete_chat(&self, chat: & Chat) -> Result<(), anyhow::Error> {
+    pub async fn delete_chat(&self, chat: &Chat) -> Result<(), anyhow::Error> {
         if chat.x_sydney_conversationsignature.read().await.is_none() {
             self.update_chat_signature(chat).await?;
         }
@@ -281,7 +295,11 @@ impl BingClient {
             "Authorization",
             reqwest::header::HeaderValue::from_str(&format!(
                 "Bearer {}",
-                chat.x_sydney_conversationsignature.read().await.clone().unwrap()
+                chat.x_sydney_conversationsignature
+                    .read()
+                    .await
+                    .clone()
+                    .unwrap()
             ))?,
         );
         let request = self
@@ -308,7 +326,10 @@ impl BingClient {
 
     pub async fn delete_chats<'a>(&self, chats: TodelChats<'a>) -> Result<(), anyhow::Error> {
         let ids = match chats {
-            TodelChats::Chats(chats) => chats.iter().map(|chat|{chat.conversation_id.to_string()}).collect::<Vec<String>>(),
+            TodelChats::Chats(chats) => chats
+                .iter()
+                .map(|chat| chat.conversation_id.to_string())
+                .collect::<Vec<String>>(),
             TodelChats::Ids(ids) => ids,
         };
 
@@ -329,7 +350,7 @@ impl BingClient {
         }
     }
 
-    pub async fn rename_chat(&self, chat: & Chat, new_name:String) -> Result<(), anyhow::Error> {
+    pub async fn rename_chat(&self, chat: &Chat, new_name: String) -> Result<(), anyhow::Error> {
         if chat.x_sydney_conversationsignature.read().await.is_none() {
             self.update_chat_signature(chat).await?;
         }
@@ -338,19 +359,27 @@ impl BingClient {
             "Authorization",
             reqwest::header::HeaderValue::from_str(&format!(
                 "Bearer {}",
-                chat.x_sydney_conversationsignature.read().await.clone().unwrap()
+                chat.x_sydney_conversationsignature
+                    .read()
+                    .await
+                    .clone()
+                    .unwrap()
             ))?,
         );
         let request = self
             .reqwest_client
             .post(RENAME_CHAT_URL)
             .headers(headers)
-            .json(&RenameChatRequest::build(chat.conversation_id.to_string(), self.client_id.to_string(), new_name));
+            .json(&RenameChatRequest::build(
+                chat.conversation_id.to_string(),
+                self.client_id.to_string(),
+                new_name,
+            ));
         let resp: RenameChatResp = request.send().await?.json().await?;
 
-        if resp.result.value == "Success"{
+        if resp.result.value == "Success" {
             Ok(())
-        }else {
+        } else {
             Err(anyhow::anyhow!(
                 "Rename Bing Copilot Chat Failed; ConversationId: {}; Error Value: {}; Error Message: {:?}",
                 chat.conversation_id,
@@ -359,7 +388,11 @@ impl BingClient {
             ))
         }
     }
-    pub async fn update_conversation(&self,chat:&Chat,new_message:Value)->Result<(),anyhow::Error>{
+    pub async fn update_conversation(
+        &self,
+        chat: &Chat,
+        new_message: Value,
+    ) -> Result<(), anyhow::Error> {
         if chat.x_sydney_conversationsignature.read().await.is_none() {
             self.update_chat_signature(chat).await?;
         };
@@ -368,29 +401,32 @@ impl BingClient {
             "Authorization",
             reqwest::header::HeaderValue::from_str(&format!(
                 "Bearer {}",
-                chat.x_sydney_conversationsignature.read().await.clone().unwrap()
+                chat.x_sydney_conversationsignature
+                    .read()
+                    .await
+                    .clone()
+                    .unwrap()
             ))?,
         );
         let payload = json!({
-            "messages": [
-                new_message
-            ],
-            "conversationId": chat.conversation_id,
-            "source": "cib",
-            "traceId": uuid::Uuid::new_v4().to_string(),
-            "participant": {
-              "id": self.client_id
-            },
-            "optionsSets": ["autosave", "savemem", "uprofupd", "uprofgen"]
-          }
-          );
+          "messages": [
+              new_message
+          ],
+          "conversationId": chat.conversation_id,
+          "source": "cib",
+          "traceId": uuid::Uuid::new_v4().to_string(),
+          "participant": {
+            "id": self.client_id
+          },
+          "optionsSets": ["autosave", "savemem", "uprofupd", "uprofgen"]
+        }
+        );
 
         let resp: UpdateConversaionResp = self
             .reqwest_client
             .post(UPDATE_CONVERSATION_URL)
-            .headers(   
-                headers
-            ).json(&payload)
+            .headers(headers)
+            .json(&payload)
             .send()
             .await?
             .json()
@@ -405,7 +441,7 @@ impl BingClient {
             ))
         }
     }
-    pub async fn get_chat_messages(&self, chat: & Chat) -> Result<Vec<EasyMsg>, anyhow::Error> {
+    pub async fn get_chat_messages(&self, chat: &Chat) -> Result<Vec<EasyMsg>, anyhow::Error> {
         if chat.x_sydney_conversationsignature.read().await.is_none() {
             self.update_chat_signature(chat).await?;
         }
@@ -414,7 +450,11 @@ impl BingClient {
             "Authorization",
             reqwest::header::HeaderValue::from_str(&format!(
                 "Bearer {}",
-                chat.x_sydney_conversationsignature.read().await.clone().unwrap()
+                chat.x_sydney_conversationsignature
+                    .read()
+                    .await
+                    .clone()
+                    .unwrap()
             ))?,
         );
         let resp: Value = self
@@ -423,9 +463,7 @@ impl BingClient {
                 &chat.conversation_id,
                 &self.client_id,
             ))
-            .headers(
-                headers
-            )
+            .headers(headers)
             .send()
             .await?
             .json()
@@ -437,9 +475,10 @@ impl BingClient {
         &self,
         prompt: &str,
     ) -> Result<Vec<crate::types::bot_easy_resp_type::Image>, anyhow::Error> {
-        let url = gen_pool_image_url(prompt, self.gen_header()?,&Uuid::new_v4().to_string()).await?;
+        let url =
+            gen_pool_image_url(prompt, self.gen_header()?, &Uuid::new_v4().to_string()).await?;
         let headers = self.gen_header()?;
-        poll_images(url,headers,true).await
+        poll_images(url, headers, true).await
     }
 
     pub async fn ask_stream_plain<'a>(
@@ -448,9 +487,9 @@ impl BingClient {
         user_input: UserInput,
     ) -> Result<(Gen<String, (), impl Future<Output = ()> + 'a>, impl Fn()), anyhow::Error> {
         let (mut stream, stop_fn) = self.ask_stream(chat, user_input).await?;
-        let mut suggests:Vec<String>= Vec::new();
-        let mut images:Vec<crate::types::bot_easy_resp_type::Image> = Vec::new();
-        let mut sources:Vec<crate::types::bot_easy_resp_type::SourceAttribution> = Vec::new();
+        let mut suggests: Vec<String> = Vec::new();
+        let mut images: Vec<crate::types::bot_easy_resp_type::Image> = Vec::new();
+        let mut sources: Vec<crate::types::bot_easy_resp_type::SourceAttribution> = Vec::new();
         let mut limit_text = Vec::new();
         let mut plain_text = String::new();
         let mut apology_text = String::new();
@@ -467,7 +506,9 @@ impl BingClient {
                     crate::types::bot_easy_resp_type::BotResp::Image(mut image_vec) => {
                         images.append(&mut image_vec);
                     }
-                    crate::types::bot_easy_resp_type::BotResp::SourceAttribution(mut source_vec) => {
+                    crate::types::bot_easy_resp_type::BotResp::SourceAttribution(
+                        mut source_vec,
+                    ) => {
                         sources.append(&mut source_vec);
                     }
                     crate::types::bot_easy_resp_type::BotResp::Limit(limit) => {
@@ -486,7 +527,7 @@ impl BingClient {
                     result += &format!("{}. {}\n", index + 1, image);
                 }
             }
-            if !apology_text.is_empty(){
+            if !apology_text.is_empty() {
                 result += "\nApology: \n\n";
                 result += &apology_text;
             }
@@ -512,16 +553,27 @@ impl BingClient {
         });
         Ok((chat_gen, stop_fn))
     }
-    
+
     pub async fn ask_stream<'a>(
         &'a self,
         chat: &'a Chat,
         user_input: UserInput,
-    ) -> Result<(Gen<BotResp, (), impl Future<Output = ()> + 'a>,impl Fn()), anyhow::Error> {
-        if  chat.x_sydney_encryptedconversationsignature.read().await.is_none() {
+    ) -> Result<(Gen<BotResp, (), impl Future<Output = ()> + 'a>, impl Fn()), anyhow::Error> {
+        if chat
+            .x_sydney_encryptedconversationsignature
+            .read()
+            .await
+            .is_none()
+        {
             self.update_chat_signature(chat).await?
         }
-        let url = gen_chat_hub_wss_url(chat.x_sydney_encryptedconversationsignature.read().await.as_ref().unwrap());
+        let url = gen_chat_hub_wss_url(
+            chat.x_sydney_encryptedconversationsignature
+                .read()
+                .await
+                .as_ref()
+                .unwrap(),
+        );
 
         let mut request = url.into_client_request()?;
         request.headers_mut().insert(
@@ -534,8 +586,10 @@ impl BingClient {
 
         let handshake_msg = add_suffix(json!({"protocol":"json","version":1}).to_string());
         let echo_msg = add_suffix(json!({"type":6}).to_string());
-        let stop_msg = add_suffix(json!({"arguments":[{}],"invocationId":"3","target":"stop","type":1}).to_string());
-        
+        let stop_msg = add_suffix(
+            json!({"arguments":[{}],"invocationId":"3","target":"stop","type":1}).to_string(),
+        );
+
         let signal = StopSignal::new();
         let stop_fn = signal.stop_fn();
 
@@ -547,10 +601,11 @@ impl BingClient {
             .await?;
 
         let chat_gen = Gen::new(|co| async move {
-            let mut botresp_tasks_handle: Vec<tokio::task::JoinHandle<(BotResp,Value)>> = Vec::new();
+            let mut botresp_tasks_handle: Vec<tokio::task::JoinHandle<(BotResp, Value)>> =
+                Vec::new();
             let mut shutdown = false;
             while let Some(ws_msg_rst) = read.next().await {
-                if signal.check_stop(){
+                if signal.check_stop() {
                     write.send(Text(stop_msg.clone())).await.unwrap();
                 }
                 match ws_msg_rst {
@@ -589,7 +644,7 @@ impl BingClient {
                                                     break;
                                                 }
                                                 // 如果用户取消回答，则最后消息为3类型
-                                                3=>{
+                                                3 => {
                                                     shutdown = true;
                                                     break;
                                                 }
@@ -624,25 +679,29 @@ impl BingClient {
                     },
                 }
             }
-            let resp_results:Vec<Result<(BotResp,Value), JoinError>>= join_all(botresp_tasks_handle).await;
-            for resp_result in resp_results{
-                match resp_result  {
-                    Ok((resp,payload)) => {
+            let resp_results: Vec<Result<(BotResp, Value), JoinError>> =
+                join_all(botresp_tasks_handle).await;
+            for resp_result in resp_results {
+                match resp_result {
+                    Ok((resp, payload)) => {
                         co.yield_(resp).await;
-                        match self.update_conversation(chat, payload).await{
-                            Ok(())=>{},
-                            Err(e)=>{
-                                co.yield_(BotResp::Apology(format!("Failed to update conversation: {e}"))).await;
+                        match self.update_conversation(chat, payload).await {
+                            Ok(()) => {}
+                            Err(e) => {
+                                co.yield_(BotResp::Apology(format!(
+                                    "Failed to update conversation: {e}"
+                                )))
+                                .await;
                             }
                         }
-                    },
+                    }
                     Err(e) => {
-                        co.yield_(BotResp::Apology(format!("{}",e))).await;
-                    },
+                        co.yield_(BotResp::Apology(format!("{}", e))).await;
+                    }
                 }
             }
         });
-        Ok((chat_gen,stop_fn))
+        Ok((chat_gen, stop_fn))
     }
 }
 
