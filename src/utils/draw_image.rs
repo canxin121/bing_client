@@ -18,8 +18,15 @@ pub async fn gen_pool_image_url(
     reqwest_header: HeaderMap,
     message_id: &str,
 ) -> Result<String, anyhow::Error> {
+    #[cfg(not(feature = "allow-invalid-tls"))]
     let client = reqwest::Client::builder()
         .redirect(Policy::none())
+        .build()?;
+
+    #[cfg(feature = "allow-invalid-tls")]
+    let client = reqwest::Client::builder()
+        .redirect(Policy::none())
+        .danger_accept_invalid_certs(true)
         .build()?;
 
     let response = client
@@ -58,9 +65,17 @@ pub async fn poll_images(
     reqwest_header: HeaderMap,
     wait_long: bool,
 ) -> Result<Vec<Image>, anyhow::Error> {
+    #[cfg(not(feature = "allow-invalid-tls"))]
     let client = reqwest::Client::builder()
         .default_headers(reqwest_header)
         .build()?;
+
+    #[cfg(feature = "allow-invalid-tls")]
+    let client = reqwest::Client::builder()
+        .default_headers(reqwest_header)
+        .danger_accept_invalid_certs(true)
+        .build()?;
+
     let mut times = match wait_long {
         true => 100,
         _ => 50,

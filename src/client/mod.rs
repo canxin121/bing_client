@@ -70,12 +70,29 @@ impl BingClient {
         let mut headers = HeaderMap::new();
         headers.insert(reqwest::header::COOKIE, cookie_string.parse()?);
         headers.insert("Referer", "https://www.bing.com/search?q=Bing+Ai".parse()?);
-        Ok(BingClient {
-            reqwest_client: { ReqwestClient::builder().default_headers(headers).build()? },
-            cookie_str: cookie_string,
-            client_id: String::new(),
-            chats: Vec::new(),
-        })
+        #[cfg(feature = "allow-invalid-tls")]
+        {
+            Ok(BingClient {
+                reqwest_client: {
+                    ReqwestClient::builder()
+                        .default_headers(headers)
+                        .danger_accept_invalid_certs(true)
+                        .build()?
+                },
+                cookie_str: cookie_string,
+                client_id: String::new(),
+                chats: Vec::new(),
+            })
+        }
+        #[cfg(not(feature = "allow-invalid-tls"))]
+        {
+            Ok(BingClient {
+                reqwest_client: { ReqwestClient::builder().default_headers(headers).build()? },
+                cookie_str: cookie_string,
+                client_id: String::new(),
+                chats: Vec::new(),
+            })
+        }
     }
 
     async fn update_chat_signature(&self, chat: &Chat) -> Result<(), anyhow::Error> {
@@ -803,6 +820,14 @@ impl<'de> Deserialize<'de> for BingClient {
                         .map_err(de::Error::custom)?,
                 );
 
+                #[cfg(feature = "allow-invalid-tls")]
+                let reqwest_client = ReqwestClient::builder()
+                    .default_headers(headers)
+                    .danger_accept_invalid_certs(true)
+                    .build()
+                    .map_err(de::Error::custom)?;
+
+                #[cfg(not(feature = "allow-invalid-tls"))]
                 let reqwest_client = ReqwestClient::builder()
                     .default_headers(headers)
                     .build()
