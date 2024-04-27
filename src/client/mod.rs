@@ -304,9 +304,9 @@ impl BingClient {
     }
 
     pub async fn delete_chat(&self, chat: &Chat) -> Result<(), anyhow::Error> {
-        if chat.x_sydney_conversationsignature.read().await.is_none() {
+        // if chat.x_sydney_conversationsignature.read().await.is_none() {
             self.update_chat_signature(chat).await?;
-        }
+        // }
         let mut headers = self.gen_header()?;
         headers.insert(
             "Authorization",
@@ -368,9 +368,9 @@ impl BingClient {
     }
 
     pub async fn rename_chat(&self, chat: &Chat, new_name: String) -> Result<(), anyhow::Error> {
-        if chat.x_sydney_conversationsignature.read().await.is_none() {
+        // if chat.x_sydney_conversationsignature.read().await.is_none() {
             self.update_chat_signature(chat).await?;
-        }
+        // }
         let mut headers = self.gen_header()?;
         headers.insert(
             "Authorization",
@@ -410,9 +410,9 @@ impl BingClient {
         chat: &Chat,
         new_message: Value,
     ) -> Result<(), anyhow::Error> {
-        if chat.x_sydney_conversationsignature.read().await.is_none() {
+        // if chat.x_sydney_conversationsignature.read().await.is_none() {
             self.update_chat_signature(chat).await?;
-        };
+        // };
         let mut headers = self.gen_header()?;
         headers.insert(
             "Authorization",
@@ -459,9 +459,9 @@ impl BingClient {
         }
     }
     pub async fn get_chat_messages(&self, chat: &Chat) -> Result<Vec<EasyMsg>, anyhow::Error> {
-        if chat.x_sydney_conversationsignature.read().await.is_none() {
+        // if chat.x_sydney_conversationsignature.read().await.is_none() {
             self.update_chat_signature(chat).await?;
-        }
+        // }
         let mut headers = self.gen_header()?;
         headers.insert(
             "Authorization",
@@ -576,14 +576,14 @@ impl BingClient {
         chat: &'a Chat,
         user_input: UserInput,
     ) -> Result<(Gen<BotResp, (), impl Future<Output = ()> + 'a>, impl Fn()), anyhow::Error> {
-        if chat
-            .x_sydney_encryptedconversationsignature
-            .read()
-            .await
-            .is_none()
-        {
-            self.update_chat_signature(chat).await?
-        }
+        // if chat
+        //     .x_sydney_encryptedconversationsignature
+        //     .read()
+        //     .await
+        //     .is_none()
+        // {
+            self.update_chat_signature(chat).await?;
+        // }
         let url = gen_chat_hub_wss_url(
             chat.x_sydney_encryptedconversationsignature
                 .read()
